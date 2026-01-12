@@ -6,7 +6,7 @@ Instructor: Dr. Nat Trask
 
 ## Course Website
 
-Visit the course website: [https://natrask.github.io/ENM5320-Spring2026/](https://YOUR-USERNAME.github.io/ENM5320-Spring2026/)
+Visit the course website: [https://natrask.github.io/ENM5320-Spring2026/](https://natrask.github.io/ENM5320-Spring2026/)
 
 ## About This Course
 
