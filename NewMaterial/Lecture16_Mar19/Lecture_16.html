@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 16: Graph Calculus and Spectral Graph Theory - ENM 5320</title>
+    
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    
+    <!-- KaTeX Auto-render -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });"></script>
+    
+    <style>
+        :root {
+            --penn-blue: #011F5B;
+            --penn-red: #990000;
+            --light-gray: #f5f5f5;
+            --text-gray: #333;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--text-gray);
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--penn-blue), var(--penn-red));
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .overview {
+            background: var(--light-gray);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            border-left: 4px solid var(--penn-blue);
+        }
+        
+        h2 {
+            color: var(--penn-blue);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--penn-blue);
+        }
+        
+        h3 {
+            color: var(--penn-red);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        p {
+            margin-bottom: 1rem;
+            text-align: justify;
+        }
+        
+        .katex-display {
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        
+        .summary-box {
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+            border-left: 5px solid var(--penn-red);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 5px;
+        }
+        
+        .summary-box h2 {
+            border-bottom: none;
+            margin-top: 0;
+        }
+        
+        .summary-box ol {
+            margin-left: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        .summary-box li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 2rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--penn-blue);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .back-link:hover {
+            background: var(--penn-red);
+        }
+        
+        ul, ol {
+            margin-left: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        li {
+            margin-bottom: 0.5rem;
+        }
+        
+        strong {
+            color: var(--penn-blue);
+        }
+        
+        code {
+            background: var(--light-gray);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        hr {
+            border: none;
+            border-top: 1px solid #ddd;
+            margin: 2rem 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Lecture 16: Graph Calculus and Spectral Graph Theory</h1>
+        <p class="subtitle">ENM 5320 - Spring 2026</p>
+    </header>
+
+    <section class="overview">
+        <p>This lecture bridges the continuous world of PDEs and the discrete world of graphs, revealing that many concepts from differential geometry have natural analogs on networks. Just as we studied finite element methods on meshes, we now develop <strong>graph calculus</strong>—a framework where nodes, edges, and higher-dimensional simplices replace points, curves, and surfaces.</p>
+
+        <p>The key insight is that graphs provide a natural discretization of manifolds, and we can define discrete versions of fundamental operators: <strong>gradient</strong> (measuring differences along edges), <strong>divergence</strong> (measuring net flow at nodes), and <strong>curl</strong> (measuring circulation around triangles). These operators satisfy the same algebraic identities as their continuous counterparts: $\text{curl} \circ \text{grad} = 0$ and $\text{div} \circ \text{curl} = 0$.</p>
+
+        <p>We begin by defining graphs as collections of <strong>chains</strong> (geometric objects) and <strong>cochains</strong> (functions on those objects), paralleling the continuous distinction between manifolds and differential forms. The <strong>graph Laplacian</strong> emerges as the composition $-\delta^* \delta$, where $\delta$ is the coboundary operator and $\delta^*$ is its adjoint. This operator plays the same role as the continuous Laplacian in PDE theory.</p>
+
+        <p>Using <strong>spectral graph theory</strong>, we analyze the eigenvalues of the Laplacian to understand stability and coercivity. The smallest nonzero eigenvalue—the <strong>Fiedler eigenvalue</strong> $\lambda_1$—controls the coercivity constant in Lax-Milgram, and we derive diameter-dependent bounds that explain how graph geometry affects numerical stability. Applications to circuit analysis, graph attention networks, and recommender systems demonstrate the practical relevance of this theory.</p>
+    </section>
+
+    <h2>1. Graphs as Discrete Manifolds</h2>
+
+    <h3>1.1 Basic Definitions</h3>
+    <p>Define $G(N, E)$ as a <strong>graph</strong> with nodes and directed edges:</p>
+    <ul>
+        <li>$n_i \in N$ is a node</li>
+        <li>$e_{ij} \in E$ is an edge pointing from $j$ to $i$</li>
+    </ul>
+
+    <p>We refer to $N, E$ as <strong>chains</strong>:</p>
+    <ul>
+        <li>$N$ → <strong>0-chains</strong> (vertices)</li>
+        <li>$E$ → <strong>1-chains</strong> (oriented edges)</li>
+    </ul>
+
+    <p><strong>Definition:</strong> A <strong>$k$-chain</strong> is an oriented set of $k+1$ vertices.</p>
+
+    <h3>1.2 Boundary Operators</h3>
+    <p>The <strong>boundary operator</strong> $\partial_k : C^{k+1} \to C^k$ maps chains to their boundaries.</p>
+
+    <p><strong>Example:</strong> For an edge $e_{ij}$:</p>
+
+    $$
+    \partial_0 e_{ij} = n_j - n_i
+    $$
+
+    <p><strong>Interpretation:</strong> The boundary of an edge is the difference between its endpoint and startpoint.</p>
+
+    <p>This forms a chain complex:</p>
+
+    $$
+    C^0 \xleftarrow{\partial_0} C^1
+    $$
+
+    <h2>2. Cochains and Graph Functions</h2>
+
+    <h3>2.1 Cochains</h3>
+    <p>We can assign real numbers to chains to develop <strong>graph functions</strong> (think of grid functions in FDM as functions on 0-chains).</p>
+
+    <p><strong>Definition:</strong> $f \in C_k = \mathbb{R}^{\dim(C^k)}$ is a <strong>cochain</strong> (note subscript).</p>
+
+    <p><strong>Note:</strong> In mathematics, "co-" often means a real number associated with an object.</p>
+
+    <p>For edge functions: $f_{ij} \in C_1$ with the property $f_{ij} = -f_{ji}$ (anti-symmetry).</p>
+
+    <h3>2.2 Coboundary Operator (Graph Gradient)</h3>
+    <p><strong>Definition:</strong> The <strong>coboundary operator</strong> is a mapping:</p>
+
+    $$
+    d_k : C_k \to C_{k+1}
+    $$
+
+    <p><strong>Example:</strong> Let $\phi \in C_0$ (a node function). The <strong>graph gradient</strong> is:</p>
+
+    $$
+    d_0 \phi_{ij} = \phi_j - \phi_i
+    $$
+
+    <p><strong>Why "gradient"?</strong> In traditional calculus, by the fundamental theorem of calculus:</p>
+
+    $$
+    \int_{e_{ij}} \nabla u \cdot dl = u_j - u_i
+    $$
+
+    <p>The graph gradient $d_0$ is the discrete analog!</p>
+
+    <h2>3. Codifferential (Graph Divergence)</h2>
+
+    <h3>3.1 Definition</h3>
+    <p><strong>Definition:</strong> The <strong>codifferential</strong> is the adjoint of the coboundary operator.</p>
+
+    <p>Note: $\delta_k : \mathbb{R}^{\dim(C_k)} \to \mathbb{R}^{\dim(C_{k+1})}$</p>
+
+    $$
+    \Rightarrow \delta_k \in \mathbb{R}^{\dim(C_{k+1}) \times \dim(C_k)}
+    $$
+
+    <p>For $v \in C_k$, $u \in C_{k+1}$:</p>
+
+    $$
+    \langle v, \delta_k^* u \rangle = \langle \delta_k v, u \rangle
+    $$
+
+    <h3>3.2 Explicit Computation</h3>
+    <p><strong>Step 1:</strong> Expand the right-hand side:</p>
+
+    $$
+    \begin{aligned}
+    \langle \delta_k v, u \rangle &= \sum_{i,j,k} \delta_{ij,k} v_k u_{ij} \\
+    &= \sum_k v_k \left( \sum_{i,j} \delta_{ij,k} u_{ij} \right)
+    \end{aligned}
+    $$
+
+    <p><strong>Step 2:</strong> Identify:</p>
+
+    $$
+    (\delta^* u)_k = \sum_{i,j} \delta_{ij,k} u_{ij}
+    $$
+
+    <p><strong>Step 3:</strong> Therefore:</p>
+
+    $$
+    \langle \delta_k v, u \rangle = \sum_k v_k \delta^* u_k = \langle v, \delta^* u \rangle
+    $$
+
+    <h3>3.3 Weighted Inner Product</h3>
+    <p>Alternatively, we can define $\delta^*$ with respect to a <strong>weighted inner product</strong>:</p>
+
+    $$
+    \langle v, \delta^* u \rangle_{w_k} = \langle \delta v, u \rangle_{w_{k+1}}
+    $$
+
+    $$
+    \Rightarrow \delta^* u = w_k^{-1} \delta^\top w_{k+1} u
+    $$
+
+    <h2>4. Applications of Graph Calculus</h2>
+
+    <h3>4.1 Circuit Analysis</h3>
+    <p><strong>Ohm's Law:</strong></p>
+
+    $$
+    I_{ij} = R_{ij}^{-1} (V_j - V_i)
+    $$
+
+    <p><strong>Kirchhoff's Law:</strong> At each node, the net current is zero:</p>
+
+    $$
+    \sum_{j \sim i} I_{ij} = 0
+    $$
+
+    <p><strong>Recast in graph language:</strong></p>
+
+    $$
+    \begin{aligned}
+    I &= R^{-1} \delta_0 V \\
+    \delta_0^* I &= 0
+    \end{aligned}
+    $$
+
+    <p><strong>Step 1:</strong> Substitute $I$:</p>
+
+    $$
+    \delta_0^* R^{-1} \delta_0 V = 0
+    $$
+
+    <p><strong>This is the graph Laplacian!</strong></p>
+
+    <h3>4.2 Graph Attention Networks</h3>
+    <p>For a <strong>GAT layer</strong>:</p>
+
+    $$
+    \begin{aligned}
+    m_{ij}^n &= F(x_i^n, x_j^n \mid \theta_m) \\
+    x^{n+1} &= x^n + G\left( \sum_{j \sim i} \alpha_{ij}(x_i^n, x_j^n) m_{ij}^n \right)
+    \end{aligned}
+    $$
+
+    <p>can be rewritten:</p>
+
+    $$
+    x^{n+1} = x^n + G(\delta_0^* m)
+    $$
+
+    <p>where the <strong>attention</strong> induces the codifferential:</p>
+
+    $$
+    \delta_m^* = \delta_0^\top \alpha
+    $$
+
+    <p><strong>Important Notes:</strong></p>
+    <ul>
+        <li>GATs are notoriously hard to train deep (over-squashing/over-smoothing problems)</li>
+        <li>With physics ideas we'll show how to keep them stable</li>
+    </ul>
+
+    <h3>4.3 Recommender Systems</h3>
+    <p>Given $n$ ratings of other movies, predict what someone will like:</p>
+    <ul>
+        <li><strong>0-cochain</strong> → user scores</li>
+        <li><strong>1-cochain</strong> → movie preferences</li>
+    </ul>
+
+    <p>Similar graph analytics apply to social networks and epidemiology.</p>
+
+    <h2>5. The Weighted Graph Laplacian</h2>
+
+    <h3>5.1 Definition</h3>
+    <p>Let $W = \text{diag}(w_1, \ldots, w_{N_{\text{edges}}}) > 0$ be edge weights.</p>
+
+    <p><strong>Definition:</strong> The <strong>weighted graph Laplacian</strong> is:</p>
+
+    $$
+    L_W[u]_i = \sum_{j \sim i} w_{ij}(u_j - u_i)
+    $$
+
+    <p><strong>Example:</strong> $w_{ij} = R_{ij}^{-1}$ for circuit analysis.</p>
+
+    <p>Consider the problem:</p>
+
+    $$
+    L_W[u]_i = f_i
+    $$
+
+    <h3>5.2 Variational Formulation</h3>
+    <p>We can mimic the Galerkin procedure, using the $\ell^2$-inner product:</p>
+
+    $$
+    \langle f, g \rangle = \sum_i f_i g_i
+    $$
+
+    <p>instead of integration.</p>
+
+    <p><strong>Step 1:</strong> For all $v \in C_0$:</p>
+
+    $$
+    \langle v, L_W[u]_i \rangle = \langle v, f \rangle
+    $$
+
+    <p><strong>Step 2:</strong> Expand the left-hand side:</p>
+
+    $$
+    \text{LHS} = \sum_{i,j} v_i w_{ij}(u_j - u_i)
+    $$
+
+    <p><strong>Step 3:</strong> Symmetrize:</p>
+
+    $$
+    = \frac{1}{2} \sum_{i,j} v_i w_{ij}(u_j - u_i) + v_j w_{ji}(u_i - u_j)
+    $$
+
+    <p><strong>Step 4:</strong> Note $w_{ij} = w_{ji}$ (symmetric weights):</p>
+
+    $$
+    = -\frac{1}{2} \sum_{i,j} (v_j - v_i) w_{ij}(u_j - u_i)
+    $$
+
+    <p><strong>Step 5:</strong> In matrix form:</p>
+
+    $$
+    = -\frac{1}{2}(\delta v)^\top W \delta u = a(u, v)
+    $$
+
+    <h3>5.3 Bilinear Form</h3>
+    <p>Like before, we have identified a <strong>variational problem</strong>:</p>
+
+    $$
+    a(u, v) = \langle f, v \rangle
+    $$
+
+    <p>with <strong>energy norm</strong>:</p>
+
+    $$
+    \|u\|_E = \sqrt{a(u, u)} = \|u\|_{\delta^\top W \delta}
+    $$
+
+    <p><strong>Critical observation:</strong> We have all of our FEM machinery! To invoke Lax-Milgram, we need to prove coercivity of the energy norm:</p>
+
+    $$
+    \|u\|_E^2 \geq \alpha \langle u, u \rangle
+    $$
+
+    <h2>6. Spectral Graph Theory</h2>
+
+    <h3>6.1 Rayleigh Quotients</h3>
+    <p>Let $M = M^\top$ with orthogonal eigenpairs $(\lambda_i, v_i)$:</p>
+
+    $$
+    v_i^\top v_j = \delta_{ij}
+    $$
+
+    <p>So $M v_i = \lambda_i v_i$ for the $i$-th eigenpair:</p>
+
+    $$
+    v_i^\top M v_i = \lambda_i v_i^\top v_i = \lambda_i
+    $$
+
+    <p><strong>Definition:</strong> The <strong>Rayleigh quotient</strong> is:</p>
+
+    $$
+    R(M, x) = \frac{x^\top M x}{x^\top x}
+    $$
+
+    <p><strong>Fact:</strong> Symmetric matrices have real, non-negative eigenvalues (when $M \geq 0$).</p>
+
+    <h3>6.2 Eigen-Expansion Analysis</h3>
+    <p>Expanding $x$ in the eigenbasis:</p>
+
+    $$
+    \vec{x} = \sum_i \hat{y}_i \vec{v}_i \quad \text{where} \quad \hat{y}_i = \langle v_i, x \rangle
+    $$
+
+    <p><strong>Interpretation:</strong> The basis expansion coefficients come from projecting $x$ onto the $v_i$'s.</p>
+
+    <p>Then:</p>
+
+    $$
+    R(M, x) = \frac{\sum_i \lambda_i y_i^2}{\sum_j y_j^2}
+    $$
+
+    <p>We can see that <strong>max/min of $R$ gives max/min eigenvalues</strong>:</p>
+
+    $$
+    \lambda_{\min} \leq \lambda_{\min} \frac{\sum y_i^2}{\sum y_j^2} \leq \frac{\sum_i \lambda_i y_i^2}{\sum_j y_j^2} \leq \lambda_{\max} \frac{\sum y_j^2}{\sum y_j^2} = \lambda_{\max}
+    $$
+
+    <h3>6.3 Degree-Scaled Laplacian</h3>
+    <p>Let $d_v$ denote the <strong>degree</strong> of vertex $v$ (number of edges).</p>
+
+    <p>Following <strong>Spectral Graph Theory</strong> (Fan Chung), denote:</p>
+
+    $$
+    T = \text{diag}(d_v)_{v=1}^{N_{\text{nodes}}}
+    $$
+
+    <p><strong>Definition:</strong> The <strong>degree-scaled Laplacian</strong> is:</p>
+
+    $$
+    \mathcal{L}_{ij} = \begin{cases}
+    1 & i = j, \, d_v \neq 0 \\
+    -\frac{1}{\sqrt{d_i d_j}} & i \neq j, \, j \sim i \\
+    0 & \text{otherwise}
+    \end{cases}
+    $$
+
+    $$
+    \mathcal{L} = T^{-1/2} L T^{-1/2}
+    $$
+
+    <h3>6.4 Eigenvalue Scaling</h3>
+    <p>Consider the Rayleigh quotient:</p>
+
+    $$
+    \frac{\langle g, \mathcal{L} g \rangle}{\langle g, g \rangle} = \frac{\langle g, T^{-1/2} L T^{-1/2} g \rangle}{\langle g, g \rangle}
+    $$
+
+    <p>Let $f = T^{-1/2} g$:</p>
+
+    $$
+    = \frac{\langle f, L f \rangle}{\langle T^{1/2} f, T^{1/2} f \rangle} = \frac{\sum_{i \sim j} (f_i - f_j)^2}{\sum_k f_k^2 d_k}
+    $$
+
+    <p><strong>Eigenvalues of $\mathcal{L}$ match those of $L$ scaled by degree!</strong></p>
+
+    <h3>6.5 Properties of the Spectrum</h3>
+    <p>As a Rayleigh quotient, we can note:</p>
+
+    <ol>
+        <li><strong>Non-negativity:</strong> $\lambda_i$ are all non-negative</li>
+        <li><strong>Zero eigenvalue:</strong> $\min(\lambda) = \lambda_0 = 0$ with eigenvector $\vec{v} = \vec{1}$ (constant function)</li>
+        <li><strong>Connectivity:</strong> For a non-simply connected graph with $k$ connected components:
+            $$
+            \lambda_0, \ldots, \lambda_{k-1} = 0
+            $$
+        </li>
+        <li><strong>Coercivity constant:</strong> For a simply connected graph, the constant needed for Lax-Milgram is:
+            $$
+            \alpha = \lambda_1 = \min_{f \perp \vec{1}} \frac{\sum_{i \sim j} (f_i - f_j)^2}{\sum_k f_k^2 d_k}
+            $$
+        </li>
+    </ol>
+
+    <p><strong>Important Notes:</strong></p>
+    <ul>
+        <li>$\lambda_1$ is called the <strong>Fiedler eigenvalue</strong> and is used in spectral graph theory, graph cut algorithms, diffusion problems, and spectral clustering</li>
+        <li>This $\alpha$ only holds for $f \perp N_0$ (functions orthogonal to constants), so when we solve the variational problem we need to choose good functions orthogonal to the constant vector</li>
+    </ul>
+
+    <h2>7. Estimating the Fiedler Eigenvalue</h2>
+
+    <h3>7.1 Computational Options</h3>
+    <p><strong>Option 1:</strong> For a fixed graph, can always solve the eigenvalue problem</p>
+    <ul>
+        <li>Arnoldi iteration gives a scalable estimate for large graphs</li>
+    </ul>
+
+    <p><strong>Option 2:</strong> Estimate how scaling depends on nodes/edges geometrically</p>
+
+    <h3>7.2 Diameter-Based Bound</h3>
+    <p>Some definitions:</p>
+
+    <ul>
+        <li><strong>Volume:</strong> $\text{vol}(G) = \sum_i d_i$</li>
+        <li><strong>Distance:</strong> $d(v_i, v_j) = $ shortest path connecting $v_i, v_j$</li>
+        <li><strong>Diameter:</strong> $D = \max_{i,j \in V} d(v_i, v_j)$</li>
+    </ul>
+
+    <p><strong>Theorem:</strong> For a simply connected graph $G$ with diameter $D$:</p>
+
+    $$
+    \lambda_1 \geq \frac{1}{D \cdot \text{vol}(G)}
+    $$
+
+    <p><strong>Proof:</strong></p>
+
+    <p><strong>Step 1:</strong> For the smallest eigenvalue, $f_0 = \vec{1}$.</p>
+
+    <p><strong>Step 2:</strong> By orthogonality of eigenvectors, $\langle f_0, f_1 \rangle = 0$:</p>
+
+    $$
+    \sum_i f_1(v_i) = 0
+    $$
+
+    <p><strong>Step 3:</strong> Choose $v_0$ as a vertex satisfying:</p>
+
+    $$
+    |f(v_0)| = \max_v |f(v)|
+    $$
+
+    <p><strong>Step 4:</strong> Since $\sum_i f(v_i) = 0$, we can find a vertex $u_0$ such that $f(u_0) f(v_0) < 0$ (opposite signs).</p>
+
+    <p><strong>Step 5:</strong> Pick path $P$ joining $u_0, v_0$:</p>
+
+    $$
+    \lambda_1 = \frac{\sum_{j \sim i} (f_i - f_j)^2}{\sum_k f_k^2 d_k} \geq \frac{\sum_{j,k \in P} (f_j - f_k)^2}{\text{vol}(G) \cdot f^2(v_0)}
+    $$
+
+    <p><strong>Step 6:</strong> By the path of length $\leq D$:</p>
+
+    $$
+    \geq \frac{\frac{1}{D}(f(v_0) - f(u_0))^2}{\text{vol}(G) \cdot f^2(v_0)} \geq \frac{1}{D \cdot \text{vol}(G)}
+    $$
+
+    <p><strong>Interpretation:</strong> The coercivity constant degrades with diameter (long thin graphs are ill-conditioned) and scales inversely with volume.</p>
+
+    <h2>8. Graph Exterior Calculus</h2>
+
+    <h3>8.1 Higher-Order Chains</h3>
+    <p>So far we only introduced graph gradient and divergence. For <strong>higher-order chains</strong>, extend the coboundary:</p>
+
+    $$
+    C^k = [v_1, \ldots, v_k]_{v_i \in V}
+    $$
+
+    <p><strong>Note:</strong> Anti-symmetric with respect to vertex swap.</p>
+
+    <p><strong>Definition:</strong> The boundary operator is:</p>
+
+    $$
+    \partial_{k-1} [v_1, \ldots, v_k] = \sum_{i=1}^k (-1)^{i-1} [v_1, \ldots, \hat{v}_i, \ldots, v_k]
+    $$
+
+    <p>where $\hat{v}_i$ means "leave this vertex out."</p>
+
+    <h3>8.2 Example: Edge Boundary</h3>
+    <p>Given edge $[v_1, v_2] = -[v_2, v_1]$:</p>
+
+    $$
+    \begin{aligned}
+    \partial_0[v_1, v_2] &= (-1)^0 v_2 + (-1)^1 v_1 \\
+    &= v_2 - v_1
+    \end{aligned}
+    $$
+
+    <h3>8.3 Fundamental Identity</h3>
+    <p><strong>Theorem:</strong> $\partial_{k-1} \circ \partial_k = 0$</p>
+
+    <p><strong>Proof:</strong></p>
+
+    $$
+    \begin{aligned}
+    \partial_{k-1} \partial_k &= \sum_{i=1}^k (-1)^{i-1} \partial_{k-1} [v_1, \ldots, \hat{v}_i, \ldots, v_k] \\
+    &= \sum_{i,j} (-1)^{i-1} (-1)^{j-1} [v_1, \ldots, \hat{v}_i, \ldots, \hat{v}_j, \ldots, v_k] \\
+    &= \sum_{i,j} \alpha_{ij}
+    \end{aligned}
+    $$
+
+    <p><strong>Note:</strong> Anti-symmetric: $\alpha_{ij} = -\alpha_{ji}$, so the sum vanishes:</p>
+
+    $$
+    = 0
+    $$
+
+    <h3>8.4 Coboundary Operators</h3>
+    <p>A similar algebraic definition of coboundary can be obtained:</p>
+
+    $$
+    \langle f, \partial_k c \rangle = \langle d_k f, c \rangle
+    $$
+
+    <p><strong>Examples:</strong></p>
+
+    $$
+    \begin{aligned}
+    \delta_0 \phi_{ij} &= \phi_j - \phi_i \quad \text{(gradient)} \\
+    \delta_1 \phi_{ijk} &= \phi_{ij} + \phi_{jk} + \phi_{ki} \quad \text{(curl)}
+    \end{aligned}
+    $$
+
+    <p>Similarly, $\delta_k \circ \delta_{k-1} = 0$ (discrete curl-grad identity).</p>
+
+    <p><strong>Example:</strong></p>
+
+    $$
+    \begin{aligned}
+    \delta_1 \delta_0 \phi &= \delta_0 \phi_{ij} + \delta_0 \phi_{jk} + \delta_0 \phi_{ki} \\
+    &= (\phi_j - \phi_i) + (\phi_k - \phi_j) + (\phi_i - \phi_k) \\
+    &= 0
+    \end{aligned}
+    $$
+
+    <div class="summary-box">
+        <h2>Summary</h2>
+        <p>This lecture covered:</p>
+        <ol>
+            <li><strong>Graphs as discrete manifolds</strong> with chains and cochains</li>
+            <li><strong>Boundary and coboundary operators</strong> (gradient, divergence, curl)</li>
+            <li><strong>Graph Laplacian</strong> and its variational formulation</li>
+            <li><strong>Rayleigh quotients</strong> and spectral analysis</li>
+            <li><strong>Fiedler eigenvalue</strong> and coercivity bounds</li>
+            <li><strong>Degree-scaled Laplacian</strong> and diameter-dependent stability estimates</li>
+            <li><strong>Graph exterior calculus</strong> with higher-order operators</li>
+            <li><strong>Applications</strong> to circuits, GATs, and recommender systems</li>
+        </ol>
+
+        <p><strong>Key Takeaway:</strong> The graph Laplacian $L = -\delta^* \delta$ provides discrete analogs of continuous PDEs, with spectral properties controlled by graph geometry. The Fiedler eigenvalue $\lambda_1$ determines the coercivity constant for Lax-Milgram, with the bound $\lambda_1 \geq 1/(D \cdot \text{vol}(G))$ showing that long thin graphs (large diameter) lead to ill-conditioned systems. Graph exterior calculus extends these ideas to higher-order operators, ensuring discrete versions of identities like $\partial \circ \partial = 0$ hold exactly—critical for structure-preserving algorithms in machine learning and scientific computing.</p>
+    </div>
+
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+</body>
+</html>

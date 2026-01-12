@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 19: Variational Inference and Variational Autoencoders</title>
+    
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    
+    <!-- KaTeX JavaScript -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });"></script>
+    
+    <style>
+        :root {
+            --penn-blue: #01256E;
+            --penn-red: #95001A;
+            --penn-light-blue: #82AFD3;
+            --penn-yellow: #F2C100;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 40px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 5px;
+        }
+        
+        header {
+            border-bottom: 4px solid var(--penn-blue);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: var(--penn-blue);
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: var(--penn-red);
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+        
+        .topics {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-left: 4px solid var(--penn-light-blue);
+            margin-bottom: 20px;
+        }
+        
+        .topics strong {
+            color: var(--penn-blue);
+        }
+        
+        .topics ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        h2 {
+            color: var(--penn-blue);
+            margin-top: 30px;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid var(--penn-light-blue);
+        }
+        
+        h3 {
+            color: var(--penn-red);
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        h4 {
+            color: var(--penn-blue);
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        
+        .katex-display {
+            margin: 20px 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        
+        .katex {
+            font-size: 1.1em;
+        }
+        
+        strong {
+            color: var(--penn-blue);
+        }
+        
+        em {
+            color: var(--penn-red);
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid var(--penn-light-blue);
+            margin: 30px 0;
+        }
+        
+        .definition, .theorem, .lemma, .example, .note {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .definition {
+            background-color: #e8f4f8;
+            border-left: 4px solid var(--penn-blue);
+        }
+        
+        .theorem, .lemma {
+            background-color: #fef5e7;
+            border-left: 4px solid var(--penn-yellow);
+        }
+        
+        .example {
+            background-color: #f0f8ff;
+            border-left: 4px solid var(--penn-light-blue);
+        }
+        
+        .note {
+            background-color: #fff5f5;
+            border-left: 4px solid var(--penn-red);
+        }
+        
+        .summary {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 2px solid var(--penn-blue);
+            border-radius: 5px;
+            margin-top: 30px;
+        }
+        
+        .summary h2 {
+            margin-top: 0;
+            border-bottom: none;
+        }
+        
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Lecture 19: Variational Inference and Variational Autoencoders</h1>
+            <p class="subtitle">Reference: Lecture 19 - Generative Modeling via Variational Inference</p>
+            <div class="topics">
+                <strong>Topics Covered:</strong>
+                <ul>
+                    <li>Probability basics: PDFs, expectations, Gaussians</li>
+                    <li>Joint, marginal, and conditional distributions</li>
+                    <li>Bayes' theorem and KL-divergence</li>
+                    <li>Jensen's inequality</li>
+                    <li>Evidence Lower Bound (ELBO)</li>
+                    <li>Variational Autoencoders (VAEs)</li>
+                    <li>Mixture of Experts and Product of Experts</li>
+                </ul>
+            </div>
+        </header>
+
+        <main>
+            <h2>0. Overview</h2>
+            <p>
+                This lecture introduces a fundamentally new type of variational method—one that operates on <strong>probability distributions</strong> rather than mechanical energies. Until now, our variational principles have focused on minimizing functionals like $\int |\nabla u|^2$ or maximizing stability conditions. Now we shift to <strong>variational inference</strong>, where we optimize over spaces of probability distributions to solve inverse problems and perform generative modeling.
+            </p>
+            <p>
+                The motivating question is: <strong>How do we solve for "latent" physics?</strong> In many applications, observations $x$ are generated from hidden variables $z$ through a process $p(x|z)$. Inverting this relationship—finding $p(z|x)$—is computationally intractable for complex models. Variational inference sidesteps this by introducing an approximate posterior $q(z|x)$ and optimizing it to be as close as possible to the true posterior.
+            </p>
+            <p>
+                The key mathematical tool is the <strong>Evidence Lower Bound (ELBO)</strong>, derived using Jensen's inequality. The ELBO provides a tractable objective that simultaneously reconstructs observations and regularizes the latent space. This framework underlies <strong>Variational Autoencoders (VAEs)</strong>, which learn to map data to a structured latent space (typically Gaussian) and decode back to the original space.
+            </p>
+            <p>
+                We begin with probability fundamentals, develop the ELBO through careful manipulations involving KL-divergence, and show how VAEs implement this as a neural architecture. Finally, we explore building blocks like <strong>Mixture of Experts</strong> and <strong>Product of Experts</strong> that extend the basic VAE framework to more complex generative models.
+            </p>
+
+            <h2>1. Probability Fundamentals</h2>
+
+            <h3>1.1 Probability Density Functions</h3>
+            <p>
+                For a continuous random variable $X$ in $\mathbb{R}$:
+            </p>
+            <div class="definition">
+                <strong>Definition:</strong> The <strong>probability density function</strong> $p(x)$ satisfies:
+                $$
+                \mathbb{P}(a \leq X \leq b) = \int_a^b p(x) \, dx
+                $$
+                with properties:
+                $$
+                \begin{aligned}
+                p(x) &\geq 0 \\
+                \int_{-\infty}^\infty p(x) \, dx &= 1
+                \end{aligned}
+                $$
+            </div>
+
+            <h3>1.2 Expectation</h3>
+            <div class="definition">
+                <strong>Definition:</strong> The <strong>expectation</strong> of a function $f$ under distribution $p$ is:
+                $$
+                \mathbb{E}_p[f(x)] = \int_{-\infty}^\infty f(x) p(x) \, dx
+                $$
+                <p>Sometimes we drop the subscript if we are only talking about a specific distribution.</p>
+            </div>
+
+            <h3>1.3 Multivariate Gaussians</h3>
+            <div class="example">
+                <strong>Example (our bread and butter):</strong> Given $\vec{x} \in \mathbb{R}^d$, $\mu \in \mathbb{R}^d$, $\Sigma \in \mathbb{R}^{d \times d}$ invertible and positive semi-definite:
+                $$
+                p(x) = (2\pi)^{-d/2} |\Sigma|^{-1/2} \exp\left( -\frac{1}{2}(x - \mu)^\top \Sigma^{-1}(x - \mu) \right)
+                $$
+                <strong>Notation:</strong>
+                $$
+                X \sim \mathcal{N}(x; \mu, \Sigma)
+                $$
+            </div>
+            <div class="note">
+                <strong>Pedagogical note:</strong> Gaussians are like the piecewise polynomials of probability—easy to work with, compose well, and sufficient for most applications.
+            </div>
+
+            <h2>2. Joint, Marginal, and Conditional Distributions</h2>
+
+            <h3>2.1 Definitions</h3>
+            <p>
+                <strong>Joint distribution:</strong> $p(x, z)$ is the probability of $x$ AND $z$.
+            </p>
+            <p>
+                <strong>Marginal distribution:</strong> $p(x) = \int p(x, z) \, dz$ accounts for all possible values of $z$.
+            </p>
+            <p>
+                <strong>Conditional distribution:</strong> $p(z | x) = \frac{p(x, z)}{p(x)}$ if $p(x) > 0$ (probability of $z$ if $x$ happened).
+            </p>
+
+            <h3>2.2 Bayes' Theorem</h3>
+            <p>
+                Since $p(x, z) = p(x | z) p(z) = p(z | x) p(x)$:
+            </p>
+            <div class="theorem">
+                $$
+                p(x | z) = \frac{p(z | x) p(x)}{p(z)}
+                $$
+                <p><strong>Use:</strong> Flip "input"/"output" relationship!</p>
+            </div>
+            <div class="note">
+                <strong>Critical observation:</strong> This is the foundation of Bayesian inference—updating beliefs about latent variables $z$ given observations $x$.
+            </div>
+
+            <h2>3. KL-Divergence</h2>
+
+            <h3>3.1 Definition</h3>
+            <p>
+                Finally, a "pseudo-metric" on distributions:
+            </p>
+            <div class="definition">
+                <strong>Definition:</strong> The <strong>KL-divergence</strong> (Kullback-Leibler divergence) is:
+                $$
+                \text{KL}(q \| p) = \int q(x) \log\left( \frac{q(x)}{p(x)} \right) dx
+                $$
+                <p><strong>Important properties:</strong></p>
+                <ul>
+                    <li><strong>Not symmetric:</strong> $\text{KL}(q \| p) \neq \text{KL}(p \| q)$</li>
+                    <li><strong>Always non-negative:</strong> $\text{KL}(q \| p) \geq 0$ with equality if and only if $q = p$</li>
+                </ul>
+            </div>
+
+            <h3>3.2 KL-Divergence for Gaussians</h3>
+            <p>
+                For Gaussians $q \sim \mathcal{N}(\mu_q, \Sigma_q)$, $p \sim \mathcal{N}(\mu_p, \Sigma_p)$:
+            </p>
+            $$
+            \begin{aligned}
+            \text{KL}(q \| p) = \frac{1}{2} \Bigg[ &\log \frac{|\Sigma_p|}{|\Sigma_q|} - d + \text{tr}(\Sigma_p^{-1} \Sigma_q) \\
+            &+ (\mu_p - \mu_q)^\top \Sigma_p^{-1} (\mu_p - \mu_q) \Bigg]
+            \end{aligned}
+            $$
+            <div class="note">
+                <strong>Interpretation:</strong> This closed form makes Gaussian VAEs computationally tractable!
+            </div>
+
+            <h2>4. Jensen's Inequality</h2>
+
+            <h3>4.1 Statement</h3>
+            <p>
+                Let $\phi$ be a <strong>convex function</strong>:
+            </p>
+            $$
+            \forall t \in [0,1], \, x, y: \quad \phi(tx + (1-t)y) \leq t\phi(x) + (1-t)\phi(y)
+            $$
+            <div class="theorem">
+                <strong>Jensen's Inequality:</strong>
+                $$
+                \phi(\mathbb{E}[x]) \leq \mathbb{E}[\phi(x)]
+                $$
+                <p><strong>Interpretation:</strong> The function of the average is less than or equal to the average of the function (for convex $\phi$).</p>
+            </div>
+
+            <h2>5. Evidence Lower Bound (ELBO)</h2>
+
+            <h3>5.1 Problem Setup</h3>
+            <p>
+                To sample from the data distribution:
+            </p>
+            $$
+            p(z | x) = \frac{p(x | z) p(z)}{p(x)} = \frac{p(x | z) p(z)}{\int p(x | z) p(z) \, dz}
+            $$
+            <p>
+                The denominator $p(x) = \int p(x | z) p(z) \, dz$ is <strong>computationally intractable</strong>.
+            </p>
+            <p>
+                Typically, we would do <strong>MLE</strong> (maximum likelihood estimation), i.e., pose a joint distribution and solve:
+            </p>
+            $$
+            \min_\theta -\log p_\theta(x, z)
+            $$
+
+            <h3>5.2 Deriving the ELBO</h3>
+            <p>
+                Instead, build an objective that accounts for any possible distribution on $z$.
+            </p>
+            <p>
+                <strong>Marginal log likelihood:</strong>
+            </p>
+            $$
+            \begin{aligned}
+            \mathcal{L}_{\text{MLL}} &= -\sum_d \log p(x_d; \theta) \\
+            &= -\sum_d \log \sum_{z_d} p(x_d, z_d; \theta)
+            \end{aligned}
+            $$
+            <p>
+                <strong>Step 1:</strong> Introduce an arbitrary distribution on $z$: $q(z)$:
+            </p>
+            $$
+            = -\sum_d \log \sum_{z_d} q(z_d) \frac{p(x_d, z_d; \theta)}{q(z_d)}
+            $$
+            <p>
+                <strong>Step 2:</strong> Rewrite as expectation:
+            </p>
+            $$
+            = -\sum_d \log \mathbb{E}_{z \sim q}\left[ \frac{p(x_d, z_d; \theta)}{q(z_d)} \right]
+            $$
+            <p>
+                <strong>Step 3:</strong> Apply Jensen's inequality ($\log$ is concave, so flip inequality):
+            </p>
+            $$
+            \leq -\sum_d \mathbb{E}_{z \sim q}\left[ \log \frac{p(x_d, z_d; \theta)}{q(z_d)} \right]
+            $$
+            <p>
+                <strong>Step 4:</strong> Define the <strong>Evidence Lower Bound (ELBO)</strong>:
+            </p>
+            $$
+            \mathcal{L}(\theta, q) = -\sum_d \mathbb{E}_{z \sim q}[\log p(x_d, z_d; \theta)] + \underbrace{H(q_d)}_{\text{entropy of } q}
+            $$
+            <p>
+                where $H(q) = -\mathbb{E}_{z \sim q}[\log q(z)]$ is the entropy.
+            </p>
+            <div class="note">
+                <strong>Note:</strong> Don't need to plug in actual $z$'s—we work with expectations!
+            </div>
+            <p>
+                Since $\mathcal{L}_{\text{MLL}} \leq \mathcal{L}(\theta, q)$, we can choose $q$ to make $\mathcal{L}$ as close as possible to $\mathcal{L}_{\text{MLL}}$.
+            </p>
+
+            <h3>5.3 Optimal Choice of $q$</h3>
+            <p>
+                <strong>Rewriting:</strong>
+            </p>
+            $$
+            \begin{aligned}
+            \mathcal{L}(\theta, q) &= \sum_d \mathbb{E}_{z \sim q}\left[ \log \frac{p(z_d | x_d; \theta) p(x_d; \theta)}{q_d} \right] \\
+            &= \sum_d \mathbb{E}_{z \sim q}\left[ \log \frac{p(z_d | x_d; \theta)}{q_d} \right] + \mathbb{E}_{z \sim q}[\log p(x_d; \theta)] \\
+            &= \sum_d -\text{KL}(q_d \| p(z_d | x_d; \theta)) + \log p(x_d; \theta)
+            \end{aligned}
+            $$
+            <p>
+                <strong>Tightest bound when $\text{KL} = 0$:</strong>
+            </p>
+            <p>
+                Choose:
+            </p>
+            $$
+            q_d = p(z_d | x_d; \theta)
+            $$
+            <div class="note">
+                <strong>Critical observation:</strong> The ELBO becomes exact when the approximate posterior matches the true posterior!
+            </div>
+
+            <h2>6. Variational Autoencoder (VAE)</h2>
+
+            <h3>6.1 Architecture</h3>
+            <p>
+                <strong>Reference:</strong> Kingma & Welling, "Auto-Encoding Variational Bayes"
+            </p>
+            <p>
+                <strong>Encoder:</strong> $q(z | x) = \mathcal{N}(\mu(x), \Sigma(x))$ where $\mu, \Sigma$ are neural networks.
+            </p>
+            <p>
+                <strong>Reparameterization trick:</strong>
+            </p>
+            $$
+            \begin{aligned}
+            z &= \mu + \sqrt{\Sigma} \varepsilon \\
+            \varepsilon &\sim \mathcal{N}(0, I) \\
+            \Rightarrow z &\sim \mathcal{N}(\mu, \Sigma)
+            \end{aligned}
+            $$
+            <p>
+                <strong>Decoder:</strong> $p(x | z) = \mathcal{N}(\mu_{\text{out}}(z), I)$ where $\mu_{\text{out}}$ is a neural network.
+            </p>
+
+            <h3>6.2 Loss Function</h3>
+            $$
+            \mathcal{L} = \underbrace{\mathbb{E}[\log p(x | z)]}_{\text{reconstruction loss}} - \text{KL}(q(z | x) \| p(z))
+            $$
+            $$
+            \approx C + \|x - \mu_{\text{out}}\|^2 - \text{KL}(q(z|x) \| \mathcal{N}(0, I))
+            $$
+            <p>
+                <strong>Two components:</strong>
+            </p>
+            <ol>
+                <li><strong>Reconstruction loss:</strong> Ensures decoded samples match original data</li>
+                <li><strong>Prior penalty:</strong> Regularizes latent space to be approximately Gaussian</li>
+            </ol>
+
+            <h3>6.3 Design Choices</h3>
+            <p>
+                <strong>Architecture choices:</strong>
+            </p>
+            <ul>
+                <li>Encoder/decoder network architectures (CNNs, transformers, etc.)</li>
+                <li>Latent dimension</li>
+                <li>Number of samples for Monte Carlo estimation</li>
+            </ul>
+            <p>
+                <strong>Prior choices:</strong>
+            </p>
+            <ul>
+                <li>Standard Gaussian $p(z) = \mathcal{N}(0, I)$ (most common)</li>
+                <li>Learned prior</li>
+                <li>Structured prior (e.g., Mixture of Gaussians)</li>
+            </ul>
+
+            <h2>7. Building Blocks for Complex Models</h2>
+
+            <h3>7.1 Categorical Random Variables</h3>
+            <div class="definition">
+                <strong>Definition:</strong> A <strong>categorical random variable</strong> $c \sim \text{Cat}(\pi)$ satisfies:
+                $$
+                \begin{aligned}
+                \pi_i &> 0 \\
+                \sum_i \pi_i &= 1
+                \end{aligned}
+                $$
+            </div>
+
+            <h3>7.2 Mixture of Experts</h3>
+            <p>
+                <strong>Reference:</strong> Jacobs, Jordan, Nowlan, Hinton (1991)
+            </p>
+            <p>
+                <strong>Idea:</strong> Define:
+            </p>
+            $$
+            \pi_i(x) = \text{softmax}(\text{NN}(x))
+            $$
+            <p>
+                <strong>Generative model:</strong>
+            </p>
+            $$
+            p(y) = \sum_i p(c = i) p(y | c = i)
+            $$
+            <p>
+                where $y | c = i \sim \mathcal{N}(\mu_i, \Sigma_i)$.
+            </p>
+            <div class="note">
+                <strong>Interpretation:</strong> A <strong>means to sparsely increase model parameters without increasing compute time</strong>.
+            </div>
+            <p>
+                <strong>Reference:</strong> "Switch Transformers: Scaling to Trillion Parameter Models" (Fedus et al., 2022)
+            </p>
+
+            <h3>7.3 Product of Experts</h3>
+            <div class="lemma">
+                <strong>Lemma:</strong> The <strong>product of Gaussian PDFs is a Gaussian</strong>.
+                <p>
+                    Given:
+                </p>
+                $$
+                \begin{aligned}
+                p_1 &= \mathcal{N}(\mu_1, \sigma_1^2) \\
+                p_2 &= \mathcal{N}(\mu_2, \sigma_2^2)
+                \end{aligned}
+                $$
+                <p>
+                    Then:
+                </p>
+                $$
+                p_1 \cdot p_2 = \frac{1}{\sqrt{2\pi \tilde{\sigma}^2}} \exp\left( -\frac{(x - \tilde{\mu})^2}{2\tilde{\sigma}^2} \right)
+                $$
+                <p>
+                    where:
+                </p>
+                $$
+                \begin{aligned}
+                \frac{\tilde{\mu}}{\tilde{\sigma}^2} &= \frac{\mu_1}{\sigma_1^2} + \frac{\mu_2}{\sigma_2^2} \\
+                \frac{1}{\tilde{\sigma}^2} &= \frac{1}{\sigma_1^2} + \frac{1}{\sigma_2^2}
+                \end{aligned}
+                $$
+            </div>
+            <div class="note">
+                <strong>Interpretation:</strong> Product of experts combines multiple Gaussian distributions by <strong>precision-weighted averaging</strong> of means and <strong>adding precisions</strong> (inverse variances). This provides a principled way to fuse information from multiple sources.
+            </div>
+
+            <hr>
+
+            <div class="summary">
+                <h2>Summary</h2>
+                <p>This lecture covered:</p>
+                <ol>
+                    <li><strong>Probability fundamentals:</strong> PDFs, expectations, Gaussians</li>
+                    <li><strong>Joint, marginal, conditional distributions</strong> and Bayes' theorem</li>
+                    <li><strong>KL-divergence</strong> as a measure of distributional similarity</li>
+                    <li><strong>Jensen's inequality</strong> for convex functions</li>
+                    <li><strong>Evidence Lower Bound (ELBO)</strong> derivation</li>
+                    <li><strong>Variational Autoencoders (VAEs)</strong> with reparameterization trick</li>
+                    <li><strong>Loss function decomposition:</strong> reconstruction + prior penalty</li>
+                    <li><strong>Mixture of Experts</strong> for scalable capacity</li>
+                    <li><strong>Product of Experts</strong> for information fusion</li>
+                </ol>
+                <p>
+                    <strong>Key Takeaway:</strong> Variational inference reformulates intractable posterior inference $p(z|x)$ as an optimization problem over approximate posteriors $q(z|x)$. The Evidence Lower Bound (ELBO) provides a tractable objective: $\mathcal{L} = \mathbb{E}_{q}[\log p(x|z)] - \text{KL}(q(z|x) \| p(z))$. This balances reconstruction accuracy (likelihood) with regularization (prior matching). VAEs implement this framework by parameterizing $q$ and $p$ as neural networks, using the reparameterization trick to enable gradient-based optimization. The result is a generative model that learns to encode data into a structured latent space (typically Gaussian) and decode back to the data space, enabling both generation (sample $z \sim p(z)$, decode) and representation learning (encode observations to meaningful latent codes).
+                </p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

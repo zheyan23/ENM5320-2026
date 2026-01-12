@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 9: Spatial Discretization via the Discrete Action Principle - ENM 5320</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        :root {
+            --penn-blue: #011F5B;
+            --penn-red: #990000;
+            --accent-blue: #82AFD3;
+            --light-bg: #F8F9FA;
+        }
+        body {
+            font-family: 'Georgia', serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: var(--penn-blue);
+            font-size: 2.2em;
+            border-bottom: 3px solid var(--penn-red);
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: var(--penn-blue);
+            margin-top: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: var(--penn-red);
+            margin-top: 20px;
+        }
+        .definition, .theorem-box, .example-box, .summary-box {
+            background: var(--light-bg);
+            border-left: 4px solid var(--penn-blue);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .back-link {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: var(--penn-blue);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-link:hover {
+            background: var(--penn-red);
+        }
+        strong {
+            color: var(--penn-blue);
+        }
+        p {
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+        ul, ol {
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .katex-display {
+            margin: 1.5em 0;
+            overflow-x: auto;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 20px 0;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: var(--light-bg);
+            color: var(--penn-blue);
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+    
+    <h1>Lecture 9: Spatial Discretization via the Discrete Action Principle</h1>
+    
+    <p><strong>Date:</strong> February 19, 2025</p>
+    <p><strong>Topics:</strong> Discrete Lagrangian mechanics, discrete integration by parts, Noether constraints for stencils, polynomial reproduction via symmetry</p>
+
+    <h2>0. Overview</h2>
+
+    <p>This lecture completes the bridge between classical mechanics and numerical methods by applying the <strong>discrete action principle</strong> to spatial discretization of PDEs. We previously developed the Lagrangian formulation in continuous space-time; now we discretize the spatial domain while keeping time continuous, deriving finite difference stencils from variational principles.</p>
+
+    <p>The key innovation is recognizing that <strong>discrete stencils must respect discrete analogs of continuous symmetries</strong>. Just as Noether's theorem connects continuous symmetries to conserved quantities, discrete symmetries impose algebraic constraints on stencil coefficients. For the wave equation, <strong>translation invariance</strong> requires stencils to sum to zero, while <strong>polynomial reproduction</strong> (the discrete analog of Taylor consistency) imposes additional constraints on higher-order terms.</p>
+
+    <p>We introduce <strong>discrete integration by parts</strong> using shift operators, which elegantly mirrors the continuous integration by parts used to derive Euler-Lagrange equations. This leads to a systematic framework: discretize the Lagrangian, apply discrete variational calculus, and obtain stencil weights from polynomial reproduction constraints. The resulting stencils automatically inherit symmetry properties from the continuous Lagrangian.</p>
+
+    <p>This approach unifies our previous ad-hoc stencil constructions (centered differences, compact schemes) under a single variational principle. It also reveals a deep connection: searching for minimal-norm stencils with polynomial reproduction (Lecture 6) is equivalent to applying the discrete action principle with appropriate symmetry constraints.</p>
+
+    <p><strong>Pedagogical significance:</strong> This material demonstrates how mathematical physics principles (symmetries, variational principles) translate directly into numerical algorithms. Understanding this connection is essential for designing structure-preserving numerical methods and physics-informed neural networks that respect conservation laws at the discrete level.</p>
+
+    <h2>1. Discretizing the Wave Equation Lagrangian</h2>
+
+    <h3>1.1 Continuous Action</h3>
+
+    <p>Recall the action for the 1D wave equation:</p>
+    $$S = \int_0^T \int_0^L \left[\frac{1}{2}(\partial_t u)^2 - \frac{c^2}{2}(\partial_x u)^2\right] dx\, dt$$
+
+    <p>where:</p>
+    <ul>
+        <li>$\frac{1}{2}(\partial_t u)^2$ is kinetic energy density</li>
+        <li>$\frac{c^2}{2}(\partial_x u)^2$ is potential energy density (elastic strain)</li>
+    </ul>
+
+    <h3>1.2 Piecewise Constant Basis Functions</h3>
+
+    <p>Define <strong>piecewise constant extension</strong> of a grid function $u_i(t)$ on nodes $x_i = ih$ for $i = 1, \ldots, N$:</p>
+    $$\phi_i(x) = \mathbb{I}_{(x_i - h/2, x_i + h/2)}(x) = \begin{cases}
+    1 & \text{if } x \in (x_i - h/2, x_i + h/2) \\
+    0 & \text{else}
+    \end{cases}$$
+
+    <p><strong>Discrete representation:</strong></p>
+    $$u(x, t) = \sum_{i=1}^N u_i(t) \phi_i(x)$$
+
+    <p><strong>Key observation:</strong></p>
+    $$\int_0^L u(x, t)\, dx = \sum_{i=1}^N h u_i(t)$$
+    <p>Each basis function $\phi_i$ contributes area $h$ (trapezoid rule).</p>
+
+    <h3>1.3 Discrete Lagrangian</h3>
+
+    <p>Selecting $q_i = u_i$ as generalized coordinates:</p>
+    $$L = \sum_{i=1}^N \left[\frac{1}{2}\dot{q}_i^2 h - \frac{c^2}{2}(D_h q_i)^2 h\right]$$
+    <p>where $D_h q_i$ is the spatial finite difference stencil.</p>
+
+    <h2>2. Discrete Noether's Theorem</h2>
+
+    <h3>2.1 Symmetries in the Discrete Lagrangian</h3>
+
+    <p><strong>Important:</strong> In light of Noether's theorem, we analyze symmetries:</p>
+
+    <p><strong>(1) Time translation invariance:</strong></p>
+    <p>Time only enters via $\dot{q}_i$, so the Lagrangian is time-translation invariant.</p>
+
+    <div class="definition">
+        <p><strong>Conserved quantity (Hamiltonian):</strong></p>
+        $$H = \partial_{\dot{q}} L \cdot \dot{q} - L$$
+        <p>where the <strong>conjugate momentum</strong> is:</p>
+        $$p_i = \frac{\partial L}{\partial \dot{q}_i} = \dot{q}_i h$$
+    </div>
+
+    <p><strong>(2) Spatial translation invariance:</strong></p>
+    <p>$q \to q + \delta q$ (shift all grid values by a constant) is a symmetry <strong>only if</strong> $D_h \delta q = 0$ for constant $\delta q$.</p>
+
+    <div class="theorem-box">
+        <p><strong>Conserved quantity (total momentum):</strong></p>
+        $$\text{const.} = \sum_{i=1}^N p_i = \sum_{i=1}^N h\dot{q}_i$$
+        <p>This is the total discrete momentum (integral of velocity).</p>
+
+        <p><strong>Critical constraint:</strong> Translation invariance requires $D_h(\text{const.}) = 0$.</p>
+    </div>
+
+    <h2>3. Discrete Integration by Parts</h2>
+
+    <h3>3.1 Shift Operator Formalism</h3>
+
+    <div class="theorem-box">
+        <p><strong>Lemma:</strong> Consider two periodic grid functions $u_i, v_i$ satisfying $u_0 = u_N, v_0 = v_N$.</p>
+
+        <p>Then:</p>
+        $$\sum_{i=1}^N x_i y_{i+\alpha} = \sum_{i=1}^N x_{i-\alpha} y_i$$
+
+        <p><strong>Compact notation using shift operators:</strong></p>
+        <p>Define $E^\alpha u_i = u_{i+\alpha}$ (forward shift by $\alpha$). Then:</p>
+        $$\langle x, E^\alpha y \rangle = \langle E^{-\alpha} x, y \rangle$$
+        <p>where $\langle \cdot, \cdot \rangle$ denotes the discrete inner product $\sum_i x_i y_i$.</p>
+    </div>
+
+    <h3>3.2 Adjoint Operator</h3>
+
+    <p>Consider a stencil operator:</p>
+    $$D_h u_i = \sum_{k=-m}^m c_k E^k u_i$$
+
+    <div class="definition">
+        <p><strong>Definition:</strong> The <strong>adjoint operator</strong> is:</p>
+        $$D_h^* u_i = \sum_{k=-m}^m c_{-k} E^k u_i$$
+        <p>(flip stencil coefficients: $c_k \to c_{-k}$).</p>
+    </div>
+
+    <div class="theorem-box">
+        <p><strong>Theorem:</strong></p>
+        $$\langle D_h^* u, \delta u \rangle = \langle u, D_h \delta u \rangle$$
+        <p>This is the <strong>discrete analog of integration by parts</strong>!</p>
+    </div>
+
+    <h2>4. Discrete Variational Calculus</h2>
+
+    <h3>4.1 Continuous Laplacian Example</h3>
+
+    <div class="example-box">
+        <p><strong>Continuous:</strong></p>
+        $$F[u] = \frac{1}{2}\int |\nabla u|^2\, dx$$
+
+        <p><strong>Step 1:</strong> Take variation:</p>
+        $$(\delta_u F, \delta u) = \int \nabla u \cdot \nabla \delta u\, dx$$
+
+        <p><strong>Step 2:</strong> Integration by parts:</p>
+        $$(\delta_u F, \delta u) = -\int (\nabla^2 u) \delta u\, dx = -(\nabla^2 u, \delta u)$$
+
+        <p><strong>Result:</strong></p>
+        $$\delta_u F = -\nabla^2 u$$
+    </div>
+
+    <h3>4.2 Discrete Laplacian Example</h3>
+
+    <div class="example-box">
+        <p><strong>Discrete functional:</strong></p>
+        $$F_h[u] = \frac{1}{2}\int \left(\sum_i D_0 u_i \phi_i(x)\right)^2 dx = \sum_i \frac{h}{2}(D_0 u_i)^2$$
+        <p>where $D_0 u_i = \frac{u_{i+1} - u_{i-1}}{2h}$ (centered difference).</p>
+
+        <p><strong>Step 1:</strong> Take variation:</p>
+        $$\langle \delta_{u_i} F_h[u], \delta u_i \rangle = \langle D_0 u, D_0 \delta u \rangle$$
+
+        <p><strong>Step 2:</strong> Apply discrete integration by parts:</p>
+        $$\langle D_0 u, D_0 \delta u \rangle = \langle D_0^* D_0 u, \delta u \rangle$$
+
+        <p><strong>Result:</strong></p>
+        $$\delta_{u_i} F_h = D_0^* D_0 u$$
+        <p>This is the discrete Laplacian!</p>
+    </div>
+
+    <h2>5. Deriving the Discrete Wave Equation</h2>
+
+    <h3>5.1 Split the Lagrangian</h3>
+
+    $$L = \underbrace{\sum_i \frac{h}{2}\dot{q}_i^2}_{S_1} - \underbrace{\sum_i \frac{c^2 h}{2}(D_h q_i)^2}_{S_2}$$
+
+    <p><strong>Variation of $S_1$ (kinetic term):</strong></p>
+    $$\delta_{q_i} S_1 = -h\ddot{q}_i$$
+
+    <p><strong>Variation of $S_2$ (potential term):</strong></p>
+    $$\delta_{q_i} S_2 = -c^2 h \cdot D_h^* D_h q_i$$
+
+    <div class="theorem-box">
+        <p><strong>Euler-Lagrange equation:</strong></p>
+        $$\ddot{q}_i = -c^2 D_h^* D_h q_i$$
+
+        <p><strong>Remark:</strong> While tedious, no thought was needed to reach this point — just careful application of calculus!</p>
+    </div>
+
+    <h2>6. Constraints for a Good Stencil</h2>
+
+    <h3>6.1 Summary of Requirements</h3>
+
+    <p>We now have <strong>two constraints</strong> for a good stencil:</p>
+
+    <div class="definition">
+        <p><strong>(1) Noether constraint (translation invariance):</strong></p>
+        $$D_h(\text{const.}) = 0 \quad \Rightarrow \quad \sum_k c_k = 0$$
+
+        <p><strong>Derivation:</strong></p>
+        $$D_h \delta q = \sum_k c_k E^k \delta q = \delta q \sum_k c_k$$
+        <p>If $\delta q = \text{const.}$, then $D_h \delta q = 0$ requires $\sum_k c_k = 0$.</p>
+    </div>
+
+    <p><strong>(2) Polynomial reproduction:</strong></p>
+    <p>Does $D_h^* D_h q$ give a stable prediction of $\nabla^2 u$?</p>
+    <p>Recall from earlier lectures: this is true if $D_h^* D_h p = \nabla^2 p$ for any quadratic polynomial $p$.</p>
+
+    <h2>7. Polynomial Reproduction Constraints</h2>
+
+    <h3>7.1 Stencil Arithmetic</h3>
+
+    <p><strong>General stencil:</strong></p>
+    $$D_h u_i = \frac{1}{h}\sum_j c_j u_{i+j}$$
+
+    <p><strong>Composed operator:</strong></p>
+    $$D_h^* D_h u_i = \frac{1}{h^2} \sum_{j,k} c_j c_{-k} u_{i+j+k}$$
+
+    <h3>7.2 Three-Point Stencil</h3>
+
+    <p>Set:</p>
+    $$c_{-1} = \alpha, \quad c_0 = \beta, \quad c_1 = \gamma$$
+
+    <p><strong>Build table of products $c_j c_{-k}$ for indices $i+j+k$:</strong></p>
+
+    <table>
+        <tr>
+            <th>$k \backslash j$</th>
+            <th>-1</th>
+            <th>0</th>
+            <th>1</th>
+        </tr>
+        <tr>
+            <td><strong>-1</strong></td>
+            <td>$\alpha^2$ (i-2)</td>
+            <td>$\alpha\beta$ (i-1)</td>
+            <td>$\alpha\gamma$ (i)</td>
+        </tr>
+        <tr>
+            <td><strong>0</strong></td>
+            <td>$\beta\alpha$ (i-1)</td>
+            <td>$\beta^2$ (i)</td>
+            <td>$\beta\gamma$ (i+1)</td>
+        </tr>
+        <tr>
+            <td><strong>1</strong></td>
+            <td>$\gamma\alpha$ (i)</td>
+            <td>$\gamma\beta$ (i+1)</td>
+            <td>$\gamma^2$ (i+2)</td>
+        </tr>
+    </table>
+
+    <p><strong>Sum along diagonals:</strong></p>
+    $$D_h^* D_h u_i = \frac{1}{h^2}\left[\alpha\gamma u_{i-2} + \beta(\alpha + \gamma) u_{i-1} + (\alpha^2 + \beta^2 + \gamma^2) u_i + \beta(\alpha + \gamma) u_{i+1} + \alpha\gamma u_{i+2}\right]$$
+
+    <h3>7.3 Four Polynomial Reproduction Constraints</h3>
+
+    <div class="definition">
+        <p><strong>(1) Noether constraint (constant reproduction):</strong></p>
+        $$\alpha + \beta + \gamma = 0$$
+
+        <p><strong>(2) Constant reproduction (apply to $u_i = 1$):</strong></p>
+        $$2\alpha\gamma + 2\beta(\alpha + \gamma) + \alpha^2 + \beta^2 + \gamma^2 = 0$$
+
+        <p><strong>(3) Linear reproduction (apply to $u_i = ih$):</strong></p>
+        <p>This is <strong>automatically satisfied</strong> (terms cancel).</p>
+
+        <p><strong>(4) Quadratic reproduction (apply to $u_i = (ih)^2$, want $\nabla^2 u = 2$):</strong></p>
+        $$8\alpha\gamma + 2\beta(\alpha + \gamma) = -2$$
+    </div>
+
+    <h3>7.4 Solutions</h3>
+
+    <p>Solving (1)–(4) is <strong>non-unique</strong>. Let's try some simplifications:</p>
+
+    <h4>(A) Asymmetric Stencil</h4>
+
+    <div class="example-box">
+        <p>Set $\gamma = 0$:</p>
+        <p>From (1): $\alpha = -\beta$</p>
+        <p>From (4): $-2\beta^2 = -2 \Rightarrow \beta = \pm 1$</p>
+        <p>Taking $\beta = 1$:</p>
+        $$\alpha = -1, \quad \beta = 2, \quad \gamma = -1$$
+        $$D_h u = \frac{1}{h^2}(-u_{i-1} + 2u_i - u_{i+1})$$
+        <p>We recover the <strong>3-point Laplacian</strong> $D_+ D_- = D_- D_+$! ✓</p>
+    </div>
+
+    <h4>(B) Symmetric Stencil</h4>
+
+    <div class="example-box">
+        <p>Set $\alpha = \gamma$:</p>
+        <p>From (1): $\alpha = -\beta/2$</p>
+        <p>From (4): $8\alpha^2 + 2\beta \cdot 2\alpha = -2$</p>
+        <p>Substitute $\beta = -2\alpha$:</p>
+        $$8\alpha^2 - 8\alpha^2 = -2 \quad \Rightarrow \quad 0 = -2$$
+        <p><strong>No real-valued solutions!</strong> Symmetric 3-point stencils cannot satisfy polynomial reproduction up to degree 2.</p>
+    </div>
+
+    <h4>(C) Skew-Symmetric Stencil</h4>
+
+    <div class="example-box">
+        <p>Set $\alpha = -\gamma$:</p>
+        <p>From (1): $\beta = 0$</p>
+        <p>From (4): $-8\alpha^2 = -2 \Rightarrow \alpha^2 = 1/4 \Rightarrow \alpha = \pm 1/2$</p>
+        <p>Taking $\alpha = 1/2$:</p>
+        $$\alpha = \frac{1}{2}, \quad \beta = 0, \quad \gamma = -\frac{1}{2}$$
+        $$D_h u = \frac{1}{h^2}\left[-\frac{1}{4}u_{i-2} + \frac{1}{2}u_i - \frac{1}{4}u_{i+2}\right]$$
+        <p>This is a <strong>5-point compact stencil</strong> using only nodes $i-2, i, i+2$.</p>
+    </div>
+
+    <h2>Summary</h2>
+
+    <div class="summary-box">
+        <p>This lecture unified variational principles with numerical analysis to derive finite difference stencils from symmetry and polynomial reproduction:</p>
+
+        <ol>
+            <li><strong>Discrete action principle</strong> extends the Lagrangian formulation to spatial discretization; choose piecewise constant basis functions $\phi_i(x)$ and derive discrete Lagrangian $L = \sum_i [T_i - V_i]h$</li>
+
+            <li><strong>Discrete Noether's theorem</strong> translates continuous symmetries to algebraic constraints on stencils:
+                <ul>
+                    <li>Time translation → Energy conservation</li>
+                    <li>Spatial translation → $\sum_k c_k = 0$ (stencil sums to zero)</li>
+                </ul>
+            </li>
+
+            <li><strong>Discrete integration by parts</strong> using shift operators $E^\alpha$ provides the discrete analog of integration by parts: $\langle D_h^* u, v \rangle = \langle u, D_h v \rangle$</li>
+
+            <li><strong>Polynomial reproduction constraints</strong> ensure discrete consistency with continuous operators:
+                <ul>
+                    <li>Constant reproduction (order 0)</li>
+                    <li>Linear reproduction (order 1, automatically satisfied)</li>
+                    <li>Quadratic reproduction (order 2) → accuracy constraint</li>
+                </ul>
+            </li>
+
+            <li><strong>Classification of 3-point stencils:</strong>
+                <ul>
+                    <li>Asymmetric: Standard 3-point Laplacian $(-1, 2, -1)/h^2$</li>
+                    <li>Symmetric: No real solutions satisfying polynomial reproduction</li>
+                    <li>Skew-symmetric: 5-point compact stencil $(-1/4, 0, 1/2, 0, -1/4)/h^2$ on nodes $\{i-2, i, i+2\}$</li>
+                </ul>
+            </li>
+        </ol>
+
+        <p><strong>Key Takeaway:</strong> Finite difference stencils are not arbitrary — they emerge naturally from applying the discrete action principle with appropriate symmetry constraints. The variational framework guarantees that discrete schemes inherit conservation laws from continuous physics. Noether's theorem provides the algebraic constraints (e.g., $\sum c_k = 0$), while polynomial reproduction ensures accuracy. This unifies our previous ad-hoc constructions under a single principle and provides a blueprint for designing novel structure-preserving schemes.</p>
+
+        <p><strong>Connection to machine learning:</strong> When learning stencils from data, we should encode these symmetry constraints (translation invariance, polynomial reproduction) as architectural inductive biases. This reduces the hypothesis space, improves sample efficiency, and guarantees physically meaningful solutions.</p>
+    </div>
+    
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>

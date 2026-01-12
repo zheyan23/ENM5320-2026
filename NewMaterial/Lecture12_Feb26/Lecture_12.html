@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 12: Introduction to Finite Element Methods - ENM 5320</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        :root {
+            --penn-blue: #011F5B;
+            --penn-red: #990000;
+            --accent-blue: #82AFD3;
+            --light-bg: #F8F9FA;
+        }
+        body {
+            font-family: 'Georgia', serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: var(--penn-blue);
+            font-size: 2.2em;
+            border-bottom: 3px solid var(--penn-red);
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: var(--penn-blue);
+            margin-top: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: var(--penn-red);
+            margin-top: 20px;
+        }
+        h4 {
+            color: var(--penn-blue);
+            margin-top: 15px;
+        }
+        .definition, .theorem-box, .example-box, .summary-box {
+            background: var(--light-bg);
+            border-left: 4px solid var(--penn-blue);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .back-link {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: var(--penn-blue);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-link:hover {
+            background: var(--penn-red);
+        }
+        strong {
+            color: var(--penn-blue);
+        }
+        p {
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+        ul, ol {
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .katex-display {
+            margin: 1.5em 0;
+            overflow-x: auto;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 20px 0;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--light-bg);
+            color: var(--penn-blue);
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+    
+    <h1>Lecture 12: Introduction to Finite Element Methods</h1>
+    
+    <p><strong>Date:</strong> March 3, 2025</p>
+    <p><strong>Topics Covered:</strong> Transition from Finite Difference Methods (FDM) to Finite Element Methods (FEM), weak formulation and Galerkin methods, function spaces: $L^2$, $H^1$, $H_0^1$, basis functions and shape functions, assembly of stiffness matrices, Gaussian quadrature, connection to energy minimization, Galerkin orthogonality and optimal error estimates, handling Neumann boundary conditions</p>
+
+    <h2>0. Overview</h2>
+
+    <p>This lecture marks a pivotal transition in our course: we move from <strong>finite difference methods (FDM)</strong> to <strong>finite element methods (FEM)</strong>. While FDM has served us well for periodic problems on regular grids, its limitations become apparent when dealing with complex geometries, non-periodic boundary conditions, and mesh refinement. FEM provides the flexibility needed for real-world engineering problems while maintaining the mathematical rigor we've developed.</p>
+
+    <p>Before making this transition, we pause to reflect on what FDM has given us: proofs of stability and conservation properties, convergence guarantees via the Lax equivalence theorem and polynomial reproduction, stable integration of Hamiltonian systems, and a framework for physics learning as nonlinear perturbations of well-understood problems. In engineering, the <strong>verification and validation (V&V)</strong> paradigm is fundamental: <em>verification</em> ensures code correctly implements the mathematical theory (math ⇒ good code), while <em>validation</em> ensures the code predicts experimental data (good code ⇔ good model).</p>
+
+    <p>The <strong>Galerkin approach</strong> at the heart of FEM takes a fundamentally different perspective. Instead of requiring solutions to be twice differentiable (as FDM does), we formulate problems in a <strong>weak sense</strong> that only requires first derivatives. This isn't a limitation—"weak" doesn't mean "bad"—but rather enables a broader class of solutions and more flexible discretizations. We'll see that FEM naturally connects to energy minimization (the Ritz method) and provides <strong>optimal error estimates</strong> through the beautiful property of Galerkin orthogonality.</p>
+
+    <h2>1. Reflection on Finite Difference Methods</h2>
+
+    <h3>1.1 What We Can Do with FDM for ML</h3>
+
+    <ol>
+        <li><strong>Prove stability, energy conservation, momentum conservation</strong></li>
+        <li>Use <strong>Lax equivalence theorem</strong> + <strong>polynomial reproduction</strong> to guarantee convergence</li>
+        <li>Integrate Hamiltonian systems with discrete energy conservation, or use RK4+ to get stable, convergent solutions</li>
+        <li>Pose <strong>physics learning as nonlinear perturbation</strong> of "nice" problems</li>
+    </ol>
+
+    <h3>1.2 Verification and Validation in Engineering</h3>
+
+    <p>In engineering, <strong>"V&V"</strong> (Verification & Validation) is the bedrock of trust in simulations:</p>
+    <ul>
+        <li><strong>Verification:</strong> Is the code correctly implemented? Use unit tests to verify reproduction of the claims theory provides → <strong>Math ⇒ Good Code</strong></li>
+        <li><strong>Validation:</strong> Is the code predictive of experimental data? → <strong>Good Code ⇔ Good Model</strong></li>
+    </ul>
+
+    <h3>1.3 What We Cannot Do with FDM</h3>
+
+    <ol>
+        <li>Handle complex geometries</li>
+        <li>Handle non-periodic boundary conditions naturally</li>
+        <li>Refine meshes adaptively</li>
+    </ol>
+
+    <p><strong>⇒ We need FEM!</strong></p>
+
+    <h2>2. Historical Context</h2>
+
+    <h3>2.1 FEM History: Perspective Beyond the ML Hype</h3>
+
+    <ul>
+        <li><strong>1909:</strong> Walter Ritz establishes the <strong>Rayleigh-Ritz method</strong> for variational mechanics</li>
+        <li><strong>1915:</strong> Boris Galerkin develops what we now call the <strong>Galerkin method</strong></li>
+        <li><strong>1930s:</strong> Richard Courant solves PDEs using <strong>piecewise polynomial functions</strong> → Early theory developed in the 1940s → <strong>No adoption in industry</strong> due to computational limitations</li>
+        <li><strong>1960:</strong> Ray Clough coins the term <strong>"Finite Element Method"</strong> → Shift from "spring-mass elements" to the mathematical framework we'll learn today</li>
+        <li><strong>1960s:</strong> Mathematical formalism developed rigorously</li>
+        <li><strong>1980s:</strong> Computers catch up; early commercial software (Abaqus, etc.)</li>
+    </ul>
+
+    <h3>2.2 ML History for Comparison</h3>
+
+    <ul>
+        <li><strong>1987:</strong> First Multi-Layer Perceptron (MLP) with backpropagation (Rumelhart, Hinton, Williams)</li>
+        <li><strong>1998:</strong> First "PINN" paper (Lagaris et al.)</li>
+    </ul>
+
+    <p><strong>Note:</strong> FEM has 60+ years of mathematical rigor and engineering validation—don't fall for the hype that ML invented scientific computing!</p>
+
+    <h2>3. The Poisson Problem and Weak Formulation</h2>
+
+    <h3>3.1 Strong Form (Classical Formulation)</h3>
+
+    <p>Consider the <strong>Poisson problem</strong> with <strong>Dirichlet boundary conditions</strong>:</p>
+    $$(P) \quad \begin{cases}
+    -u'' = f & \text{on } (0,1) \\
+    u(0) = u(1) = 0
+    \end{cases}$$
+
+    <p><strong>Example:</strong> For $f = 1$, the exact solution is:</p>
+    $$u(x) = \frac{x(x-1)}{2}$$
+
+    <p><strong>Problem with finite differences:</strong> Assumes too much regularity in the solution:</p>
+    $$u \in C^2([0,1])$$
+    <p>(i.e., $u$ must be twice continuously differentiable)</p>
+
+    <p><strong>Weak form:</strong> Poses the problem without requiring this regularity.</p>
+
+    <p><strong>Note:</strong> "Weak" ≠ "bad" or "not strong"—actually enables a <strong>more general class of solutions</strong>.</p>
+
+    <h3>3.2 The "Galerkin Cookbook" (Error Measurement Approach)</h3>
+
+    <div class="definition">
+        <p><strong>Step 1:</strong> Take an arbitrary test function $v$ with $v(0) = v(1) = 0$</p>
+
+        <p><strong>Step 2:</strong> Multiply $(P)$ by $v$ and integrate:</p>
+        $$-\int_0^1 u'' v \, dx = \int_0^1 f v \, dx$$
+
+        <p><strong>Step 3:</strong> Integrate by parts to get the <strong>least restrictive derivatives</strong> on $u$ and $v$ possible:</p>
+        $$\int_0^1 u' v' \, dx - \underbrace{(u'(1) v(1) - u'(0) v(0))}_{= 0 \text{ by Dirichlet BC}} = \int_0^1 f v \, dx$$
+    </div>
+
+    <h3>3.3 Weak Formulation</h3>
+
+    <div class="theorem-box">
+        <p><strong>(G) Find $u \in V$ such that for any $v \in V$:</strong></p>
+        $$\boxed{\int_0^1 u' v' \, dx = \int_0^1 f v \, dx}$$
+
+        <p><strong>Remarks:</strong></p>
+        <ul>
+            <li>There is a <strong>symmetry</strong> similar to what we've seen with $D_+, D_-$ in FDM</li>
+            <li><strong>How do we choose the function space $V$?</strong></li>
+        </ul>
+    </div>
+
+    <h2>4. Function Spaces for FEM</h2>
+
+    <h3>4.1 Choosing the Right Function Space</h3>
+
+    <p>The weak formulation must be well-defined. If we pick $v = u$:</p>
+    $$\int_0^1 (u')^2 \, dx = \int_0^1 f u \, dx$$
+
+    <p>Both sides need to be finite!</p>
+
+    <h3>4.2 Useful Function Spaces</h3>
+
+    <div class="definition">
+        <p><strong>$L^2$ space</strong> (square-integrable functions):</p>
+        $$L^2([0,1]) = \left\{ f : \int_0^1 f^2 \, dx < \infty \right\}$$
+
+        <p><strong>$H^1$ space</strong> (Sobolev space, first derivative in $L^2$):</p>
+        $$H^1([0,1]) = \left\{ f \in L^2 : f' \in L^2 \right\}$$
+
+        <p><strong>$H_0^1$ space</strong> (functions in $H^1$ with zero boundary values):</p>
+        $$H_0^1([0,1]) = \left\{ f \in H^1 : f(0) = f(1) = 0 \right\}$$
+    </div>
+
+    <h3>4.3 Well-Posedness Analysis</h3>
+
+    <p><strong>LHS of (G):</strong> Finite if $u \in H^1$</p>
+
+    <p><strong>RHS of (G):</strong> By Cauchy-Schwarz,</p>
+    $$\left| \int f u \, dx \right| \leq \left( \int |f|^2 \, dx \right)^{1/2} \left( \int |u|^2 \, dx \right)^{1/2} < \infty$$
+    <p>if $f \in L^2$ and $u \in L^2$.</p>
+
+    <p><strong>Boundary terms:</strong> $H_0^1 \Rightarrow$ Don't worry about boundary terms during integration by parts.</p>
+
+    <p><strong>Therefore:</strong> $\boxed{V = H_0^1}$</p>
+
+    <p><strong>Important Note:</strong> This choice is specific to Dirichlet BCs. Different PDEs require different function spaces.</p>
+
+    <h2>5. Making It "Finite": The Galerkin Approximation</h2>
+
+    <h3>5.1 Finite-Dimensional Subspace</h3>
+
+    <p>Choose $V_h \subseteq V$ with $\dim(V_h) = N$ (i.e., pick a basis with $N$ shape functions).</p>
+
+    <p>Then:</p>
+    $$u \in V_h \quad \Rightarrow \quad u(x) = \sum_{i=1}^N \hat{u}_i \phi_i(x)$$
+
+    <h3>5.2 Many Choices for Basis Functions</h3>
+
+    <table>
+        <tr>
+            <th>Type</th>
+            <th>Example</th>
+            <th>Method Name</th>
+        </tr>
+        <tr>
+            <td><strong>Discontinuous</strong></td>
+            <td>Piecewise constant</td>
+            <td>Finite Volume</td>
+        </tr>
+        <tr>
+            <td><strong>Continuous polynomial</strong></td>
+            <td>Piecewise linear/quadratic</td>
+            <td>(Bubnov-)Galerkin</td>
+        </tr>
+        <tr>
+            <td><strong>Trigonometric / Orthogonal</strong></td>
+            <td>Fourier, Chebyshev, Legendre</td>
+            <td>Spectral Element</td>
+        </tr>
+        <tr>
+            <td><strong>Non-polynomial</strong></td>
+            <td>Gaussians, RBFs</td>
+            <td>Meshfree</td>
+        </tr>
+    </table>
+
+    <h3>5.3 Piecewise Linear Basis Functions</h3>
+
+    <p><strong>For this lecture, take</strong> $V_h = \{\text{piecewise linear functions}\}$</p>
+
+    <p><strong>Define mesh:</strong></p>
+    $$\begin{aligned}
+    X_h &= \{ih : i = 0, 1, \ldots, N_{el}\} \\
+    e_{i+1} &= [ih, (i+1)h]
+    \end{aligned}$$
+
+    <div class="definition">
+        <p><strong>Define "hat functions":</strong></p>
+        $$\phi_i(x) = \begin{cases}
+        \frac{x - x_{i-1}}{x_i - x_{i-1}} & x \in e_i \\
+        1 - \frac{x - x_i}{x_{i+1} - x_i} & x \in e_{i+1} \\
+        0 & \text{otherwise}
+        \end{cases}$$
+
+        <p><strong>Key property:</strong> $\phi_i(x_j) = \delta_{ij}$ (Kronecker delta)</p>
+
+        <p>This means the coefficients $\hat{u}_i$ are simply the <strong>nodal values</strong>: $\hat{u}_i = u(x_i)$.</p>
+    </div>
+
+    <h2>6. Assembly of the Linear System</h2>
+
+    <h3>6.1 Discrete Weak Form</h3>
+
+    <p>Rewrite <strong>(G)</strong>: Find $u \in V_h$ such that for any $v \in V_h$:</p>
+    $$\int_0^1 u' v' \, dx = \int_0^1 f v \, dx$$
+
+    <p><strong>Equivalently:</strong> Find $\hat{u} \in \mathbb{R}^{N_{el}}$ such that $\forall \hat{v} \in \mathbb{R}^{N_{el}}$:</p>
+    $$\sum_j \hat{v}_i \left[ \underbrace{\int_0^1 \phi_i' \phi_j' \, dx}_{S_{ij}} \hat{u}_j - \int_0^1 \phi_i f \, dx \right] = 0$$
+
+    <div class="theorem-box">
+        <p><strong>This is true if:</strong></p>
+        $$\boxed{S \hat{u} = b}$$
+
+        <p>where:</p>
+        <ul>
+            <li>$S_{ij} = \int_0^1 \phi_i' \phi_j' \, dx$ is the <strong>stiffness matrix</strong></li>
+            <li>$b_i = \int_0^1 \phi_i f \, dx$ is the <strong>load vector</strong></li>
+        </ul>
+    </div>
+
+    <h2>7. Uniqueness and Properties of the Stiffness Matrix</h2>
+
+    <h3>7.1 Theorem: FEM Discretization of (G) is Unique</h3>
+
+    <div class="theorem-box">
+        <p><strong>Proof:</strong> Suppose $u_1, u_2$ both solve $(G)$:</p>
+        $$\begin{aligned}
+        \int_0^1 u_1' v' \, dx &= \int_0^1 f v \, dx \\
+        \int_0^1 u_2' v' \, dx &= \int_0^1 f v \, dx
+        \end{aligned}$$
+
+        <p><strong>Subtract:</strong></p>
+        $$\int_0^1 (u_1 - u_2)' v' \, dx = 0 \quad \text{for any } v \in V_h$$
+
+        <p><strong>Pick</strong> $v = u_1 - u_2$:</p>
+        $$\int_0^1 [(u_1 - u_2)']^2 \, dx = 0$$
+        $$\Rightarrow (u_1 - u_2)' = 0 \quad \text{pointwise}$$
+        $$\Rightarrow u_1 - u_2 = \text{constant}$$
+
+        <p><strong>Since</strong> $V_h \subseteq H_0^1$, we have $u_1 - u_2 = 0$ on the boundary.</p>
+        $$\Rightarrow u_1 - u_2 = 0 \text{ everywhere} \quad \checkmark$$
+    </div>
+
+    <h3>7.2 Theorem: $S$ is Symmetric Positive Definite</h3>
+
+    <div class="theorem-box">
+        <p><strong>Proof:</strong></p>
+        $$\begin{aligned}
+        \hat{y}^\top S \hat{y} &= \sum_{i,j} \hat{y}_i \int_0^1 \phi_i' \phi_j' \, dx \, \hat{y}_j \\
+        &= \int_0^1 \left( \sum_i \hat{y}_i \phi_i' \right)^2 dx \\
+        &= \int_0^1 (y')^2 \, dx \geq 0
+        \end{aligned}$$
+
+        <p>with equality <strong>only if</strong> $y = 0$.</p>
+
+        <p><strong>Therefore:</strong> $S$ is SPD (symmetric positive definite), which guarantees unique solutions. $\quad \checkmark$</p>
+    </div>
+
+    <h2>8. Sparse Matrix Structure</h2>
+
+    <h3>8.1 Sparsity Pattern</h3>
+
+    <p><strong>Key observation:</strong></p>
+    $$S_{ij} = \int_0^1 \phi_i' \phi_j' \, dx$$
+    <p>is <strong>only non-zero if</strong> $\operatorname{supp}(\phi_i) \cap \operatorname{supp}(\phi_j) \neq \emptyset$</p>
+
+    <p>Since $\phi_i$ has support only on $[x_{i-1}, x_{i+1}]$, most entries of $S$ are zero!</p>
+
+    <p><strong>Result:</strong> $S$ is <strong>sparse</strong> (tridiagonal for 1D problems).</p>
+
+    <p>For piecewise linear elements on uniform mesh:</p>
+    $$S = \frac{1}{h} \begin{bmatrix}
+    2 & -1 & & & \\
+    -1 & 2 & -1 & & \\
+    & -1 & 2 & -1 & \\
+    & & \ddots & \ddots & \ddots
+    \end{bmatrix}$$
+
+    <p><strong>This looks familiar!</strong> Compare to FDM discretization of $-u''$.</p>
+
+    <h2>9. Gaussian Quadrature</h2>
+
+    <h3>9.1 Quadrature Rules</h3>
+
+    <p>To actually compute $S_{ij}$ and $b_i$, we need numerical integration.</p>
+
+    <div class="definition">
+        <p><strong>Definition:</strong> A <strong>quadrature rule</strong> is a set of $N_q$ points and weights:</p>
+        <ul>
+            <li>$w_i$ = quadrature weights</li>
+            <li>$x_i$ = quadrature points</li>
+        </ul>
+
+        <p>such that:</p>
+        $$\int_{-1}^1 f(x) \, dx = \sum_{i=1}^{N_q} w_i f(x_i)$$
+        <p>that is <strong>exact for some class of functions</strong>.</p>
+    </div>
+
+    <h3>9.2 Gauss-Legendre Quadrature</h3>
+
+    <p><strong>Exact for polynomial</strong> $f$ of degree $\leq 2(N_q - 1)$.</p>
+
+    <ul>
+        <li>$x_i$ are <strong>zeros of Legendre polynomials</strong> $P_{N_q}$</li>
+        <li>$w_i = \frac{2}{(1 - x_i^2)[P_{N_q}'(x_i)]^2}$</li>
+    </ul>
+
+    <table>
+        <tr>
+            <th>$N_q$</th>
+            <th>$x_i$</th>
+            <th>$w_i$</th>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td>$0$</td>
+            <td>$2$</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>$\pm 1/\sqrt{3}$</td>
+            <td>$1, 1$</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>$0, \pm\sqrt{3/5}$</td>
+            <td>$8/9, 5/9, 5/9$</td>
+        </tr>
+    </table>
+
+    <h3>9.3 Change of Variables</h3>
+
+    <p>To map the domain of integration from $[-1, 1]$ to $[a, b]$:</p>
+
+    <div class="definition">
+        <p><strong>$u$-substitution:</strong></p>
+        $$u = 2\left(\frac{x - a}{b - a}\right) - 1$$
+
+        $$\begin{aligned}
+        \int_a^b f(x) \, dx &= \int_{-1}^1 f\left(\frac{b-a}{2}u + \frac{a+b}{2}\right) \frac{b-a}{2} \, du \\
+        &= \frac{b-a}{2} \sum_{i=1}^{N_q} w_i f\left(\frac{b-a}{2}x_i + \frac{a+b}{2}\right)
+        \end{aligned}$$
+    </div>
+
+    <h2>10. Connection to Energy Minimization</h2>
+
+    <h3>10.1 The Ritz Method</h3>
+
+    <p>Consider the <strong>energy functional</strong>:</p>
+    $$F(v) = \frac{1}{2}(v', v') - (f, v) = \frac{1}{2}\int_0^1 (v')^2 \, dx - \int_0^1 f v \, dx$$
+
+    <p><strong>Ritz method (R):</strong></p>
+    $$\min_{v \in V} F(v)$$
+
+    <h3>10.2 Equivalence to Galerkin Method</h3>
+
+    <div class="theorem-box">
+        <p>To solve, use the first variation:</p>
+
+        <p><strong>Step 1:</strong> Compute variation:</p>
+        $$(\delta_v F(v), \delta v) = (v', \delta v') - (f, \delta v)$$
+
+        <p><strong>Step 2:</strong> Set to zero for any $\delta v$:</p>
+        $$\boxed{(v', \delta v') = (f, \delta v) \quad \text{for any } \delta v}$$
+
+        <p><strong>This is exactly the Galerkin formulation (G)!</strong></p>
+
+        <p><strong>Remark:</strong> Not all PDEs can be written as an energy minimization. But when they can, Galerkin = Ritz.</p>
+    </div>
+
+    <h2>11. Galerkin Orthogonality and Optimal Error</h2>
+
+    <h3>11.1 Galerkin Orthogonality</h3>
+
+    <p>If the exact solution is $u \in V$ and the FEM solution is $u_h \in V_h$:</p>
+    $$\begin{aligned}
+    (u', v') &= (f, v) \quad \text{for any } v \in V \\
+    (u_h', v') &= (f, v) \quad \text{for any } v \in V_h
+    \end{aligned}$$
+
+    <div class="theorem-box">
+        <p><strong>Subtract:</strong></p>
+        $$\boxed{(u' - u_h', v') = 0 \quad \text{for any } v \in V_h}$$
+
+        <p>This is <strong>Galerkin orthogonality</strong>: the error is orthogonal to the approximation space!</p>
+    </div>
+
+    <h3>11.2 Theorem: Optimal Error in $H^1$ Norm</h3>
+
+    <div class="theorem-box">
+        <p><strong>For any $v \in V_h$:</strong></p>
+        $$\boxed{\|(u - u_h)'\| \leq \|(u - v)'\|}$$
+
+        <p><strong>Interpretation:</strong> The FEM solution is the <strong>best possible approximation</strong> in your function space!</p>
+    </div>
+
+    <h3>11.3 Proof</h3>
+
+    <div class="theorem-box">
+        <p>Let $v \in V_h$ and $w = u_h - v \in V_h$.</p>
+
+        <p><strong>Step 1:</strong> Expand norm:</p>
+        $$\|(u - u_h)'\|^2 = ((u - u_h)', (u - u_h)')$$
+
+        <p><strong>Step 2:</strong> Add and subtract $(u - v)'$:</p>
+        $$= ((u - u_h)', (u - v)') + \underbrace{((u - u_h)', w')}_{= 0 \text{ by Galerkin orthogonality}}$$
+
+        <p><strong>Step 3:</strong> Simplify:</p>
+        $$= ((u - u_h)', (u - v)')$$
+
+        <p><strong>Step 4:</strong> Apply Cauchy-Schwarz:</p>
+        $$\leq \|(u - u_h)'\| \cdot \|(u - v)'\|$$
+
+        <p><strong>Step 5:</strong> Divide both sides by $\|(u - u_h)'\|$:</p>
+        $$\|(u - u_h)'\| \leq \|(u - v)'\| \quad \checkmark$$
+
+        <p><strong>This holds for ANY $v \in V_h$, so the FEM solution minimizes the error!</strong></p>
+    </div>
+
+    <h2>12. Handling Neumann Boundary Conditions</h2>
+
+    <h3>12.1 Problem Statement</h3>
+
+    <p>Consider:</p>
+    $$\begin{cases}
+    -u'' = 1 & \text{on } (0,1) \\
+    u(0) = 0 & \text{(Dirichlet)} \\
+    u'(1) = 0 & \text{(Neumann)}
+    \end{cases}$$
+
+    <p><strong>Exact solution:</strong></p>
+    $$u(x) = x\left(1 - \frac{x}{2}\right)$$
+
+    <h3>12.2 Weak Form with Neumann BC</h3>
+
+    <p>Return to the original weak form <strong>before</strong> imposing boundary conditions:</p>
+    $$-\int_0^1 u'' v \, dx = \int_0^1 f v \, dx$$
+
+    <p><strong>Integrate by parts:</strong></p>
+    $$\int_0^1 u' v' \, dx - (u'(1) v(1) - u'(0) v(0)) = \int_0^1 f v \, dx$$
+
+    <div class="theorem-box">
+        <p><strong>If $u'(1) = g$ (Neumann condition), substitute it in:</strong></p>
+        $$\boxed{\int_0^1 u' v' \, dx = \int_0^1 f v \, dx + g \cdot v(1)}$$
+
+        <p><strong>Key observation:</strong> Neumann BCs appear <strong>naturally</strong> in the weak formulation as boundary terms. We don't need to enforce them explicitly—they emerge from integration by parts!</p>
+
+        <p><strong>Modified linear system:</strong></p>
+        $$S \hat{u} = b + g \cdot e_N$$
+        <p>where $e_N$ is the vector with 1 in the last position (corresponding to $x = 1$) and 0 elsewhere.</p>
+    </div>
+
+    <h2>Summary</h2>
+
+    <div class="summary-box">
+        <p>This lecture covered:</p>
+
+        <ol>
+            <li><strong>Transition from FDM to FEM</strong>: motivation and historical context</li>
+            <li><strong>Weak (Galerkin) formulation</strong>: reducing regularity requirements</li>
+            <li><strong>Function spaces</strong> $L^2$, $H^1$, $H_0^1$ for well-posed weak problems</li>
+            <li><strong>Finite-dimensional approximation</strong> with basis functions (shape functions)</li>
+            <li><strong>Stiffness matrix</strong> $S$ and <strong>load vector</strong> $b$ assembly</li>
+            <li><strong>Uniqueness</strong> and <strong>SPD property</strong> of the stiffness matrix</li>
+            <li><strong>Sparsity</strong> structure for efficient computation</li>
+            <li><strong>Gaussian quadrature</strong> for numerical integration</li>
+            <li><strong>Equivalence</strong> between Galerkin method and energy minimization (Ritz method)</li>
+            <li><strong>Galerkin orthogonality</strong> and <strong>optimal error estimates</strong></li>
+            <li><strong>Natural handling</strong> of Neumann boundary conditions</li>
+        </ol>
+
+        <p><strong>Key Takeaway:</strong> The finite element method provides a principled, flexible framework for solving PDEs on complex domains with various boundary conditions. By working in weak form and choosing appropriate function spaces, we obtain optimal approximations with provable error bounds. The Galerkin orthogonality property ensures that our discrete solution is the best possible projection of the true solution onto our finite-dimensional space. Moreover, the natural emergence of Neumann boundary conditions from the weak formulation, combined with the connection to energy minimization, reveals the deep geometric structure underlying FEM—a structure we'll exploit when building learnable PDE solvers.</p>
+    </div>
+    
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>

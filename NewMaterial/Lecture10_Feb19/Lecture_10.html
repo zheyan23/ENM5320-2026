@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 10: Multi-Stage Time Integration and Symplectic Methods - ENM 5320</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        :root {
+            --penn-blue: #011F5B;
+            --penn-red: #990000;
+            --accent-blue: #82AFD3;
+            --light-bg: #F8F9FA;
+        }
+        body {
+            font-family: 'Georgia', serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: var(--penn-blue);
+            font-size: 2.2em;
+            border-bottom: 3px solid var(--penn-red);
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: var(--penn-blue);
+            margin-top: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: var(--penn-red);
+            margin-top: 20px;
+        }
+        .definition, .theorem-box, .example-box, .summary-box {
+            background: var(--light-bg);
+            border-left: 4px solid var(--penn-blue);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .back-link {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: var(--penn-blue);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-link:hover {
+            background: var(--penn-red);
+        }
+        strong {
+            color: var(--penn-blue);
+        }
+        p {
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+        ul, ol {
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .katex-display {
+            margin: 1.5em 0;
+            overflow-x: auto;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 20px 0;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: var(--light-bg);
+            color: var(--penn-blue);
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+    
+    <h1>Lecture 10: Multi-Stage Time Integration and Symplectic Methods</h1>
+    
+    <p><strong>Date:</strong> February 24, 2025</p>
+    <p><strong>Topics Covered:</strong> Multi-stage integration methods (Runge-Kutta schemes), linear stability analysis, Störmer-Verlet symplectic integrator</p>
+
+    <h2>0. Overview</h2>
+
+    <p>This lecture marks a critical transition in our course: we now have all the tools needed to build sophisticated physics-informed neural architectures. We've learned to derive energy-preserving ODEs from least action principles, compute Hamiltonians via Legendre transforms, integrate using discrete gradients, solve for nonlinear stencils with PyTorch, and impose conservation constraints through polynomial reproduction and Noether's theorem. With these foundational techniques in place, we're ready to tackle our ultimate objective: <strong>constructing a nonlinear wave equation solver</strong>.</p>
+
+    <p>The focus today shifts to the crucial question of <em>how</em> to integrate these systems in time. We begin by examining multi-stage integration schemes, particularly the Runge-Kutta (RK) family of methods. These explicit methods are especially important for machine learning applications where gradient evaluations drive the optimization process. We'll see how different RK schemes achieve various orders of accuracy and, critically, how to analyze their <strong>stability regions</strong> for systems with complex eigenvalues—a key consideration when solving hyperbolic PDEs like the wave equation.</p>
+
+    <p>Finally, we introduce the <strong>Störmer-Verlet (leapfrog) integrator</strong>, a symplectic method that exactly preserves the Hamiltonian structure of our dynamics. This conservation property makes it ideal for long-time integration of energy-conserving systems derived from variational principles. The connection between our discrete gradient methods and symplectic integration provides a beautiful unification of the variational and Hamiltonian perspectives.</p>
+
+    <h2>1. Synthesis: The Nonlinear Wave Equation Problem</h2>
+
+    <h3>1.1 Review of Available Tools</h3>
+
+    <p>Let's recall what we now know how to do:</p>
+    <ul>
+        <li>Use <strong>least action</strong> to derive an energy/momentum-preserving ODE</li>
+        <li>Use <strong>Legendre transform</strong> to compute a Hamiltonian</li>
+        <li>Use <strong>discrete gradient</strong> to integrate (example to come)</li>
+        <li>Use <strong>PyTorch</strong> to solve for nonlinear stencils</li>
+        <li>Use <strong>polynomial reproduction</strong> and <strong>Noether's theorem</strong> to put constraints on stencils</li>
+    </ul>
+
+    <p><strong>With these in hand, we are ready to assume our final form: a nonlinear wave equation solver!</strong></p>
+
+    <h3>1.2 1D Wave Equation with Periodic Boundary Conditions</h3>
+
+    <p>Consider the wave equation:</p>
+    $$\begin{cases}
+    \partial_{tt} u = c^2 \partial_{xx} u \\
+    u(x, t=0) = f(x)
+    \end{cases}$$
+
+    <div class="definition">
+        <p>The general solution is given by <strong>d'Alembert's formula</strong>:</p>
+        $$u(x,t) = f(x + ct) + f(x - ct)$$
+    </div>
+
+    <p><strong>Goal:</strong> Derive a neural architecture that can recover this simple case.</p>
+
+    <h2>2. Variational Approach to the Wave Equation</h2>
+
+    <h3>2.1 Motivation from Discrete Laplacian</h3>
+
+    <p><strong>Important Note:</strong> In a previous class, we showed that in the absence of the right-most node $(D_+ u_N^2 = D_+^2 u_N)$, the Lagrangian gives the approximation:</p>
+    $$\nabla_h^2 \approx D_+^{-1} D_+ h = D_+ D_- h$$
+
+    <h3>2.2 Discrete Action with Learnable Nonlinear Stencil</h3>
+
+    <p>Our goal is to be <strong>as expressive as possible while satisfying conservation constraints</strong>.</p>
+
+    <p>We hypothesize the discrete action:</p>
+    $$S_h[\theta] = \sum_i \frac{1}{2} \dot{q}_i^2 h - \frac{1}{2} N(D_- q_i; \theta)^2 h$$
+
+    <p>where:</p>
+    <ul>
+        <li>$N(\cdot; \theta)$ is a learnable nonlinear function (e.g., a neural network)</li>
+        <li>$D_- q_i = (q_i - q_{i-1})/h$ is the backward difference operator</li>
+        <li>$\theta$ represents learnable parameters</li>
+    </ul>
+
+    <p><strong>Key Properties:</strong></p>
+    <ul>
+        <li>This action is <strong>shift invariant</strong> for both $q$ and $t$</li>
+        <li>Alternative formulations are possible: $D_- N(q; \theta)$ or $D_- q \Rightarrow \alpha q_{i-1} - \alpha q_i$ for any $\alpha$</li>
+    </ul>
+
+    <h3>2.3 Deriving the Equations of Motion</h3>
+
+    <div class="theorem-box">
+        <p><strong>Euler-Lagrange equation:</strong></p>
+        $$\boxed{\ddot{q}_i = D_+ \nabla N(D_- q; \theta)}$$
+        <p>This is our <strong>learnable wave equation</strong> in discrete form.</p>
+    </div>
+
+    <h2>3. Hamiltonian Formulation</h2>
+
+    <h3>3.1 Generalized Momentum</h3>
+
+    <p>We can identify the generalized momentum as:</p>
+    $$p_i(t) = \frac{\partial L}{\partial \dot{q}_i} = \dot{q}_i h$$
+
+    <h3>3.2 Legendre Transform</h3>
+
+    <div class="definition">
+        <p>Applying the Legendre transform:</p>
+        $$\boxed{H = \underbrace{\sum_i \frac{1}{2} p_i^2 h^{-1}}_{T_\theta(p) \text{ (kinetic)}} + \underbrace{\frac{1}{2} \sum_i N(D_- q; \theta)^2 h}_{V_\theta(q) \text{ (potential)}}}$$
+    </div>
+
+    <h3>3.3 Hamilton's Equations</h3>
+
+    <p>We want to solve:</p>
+    $$\begin{aligned}
+    \frac{dp}{dt} &= -\partial_q V_\theta(q) \\
+    \frac{dq}{dt} &= \partial_p T_\theta(p)
+    \end{aligned}$$
+
+    <p>These are the canonical Hamiltonian equations for our learnable wave system.</p>
+
+    <h2>4. Multi-Stage Time Integration Methods</h2>
+
+    <h3>4.1 Motivation: Linear Stability Analysis</h3>
+
+    <p><strong>Some final remarks on time integration:</strong></p>
+
+    <p>To choose an integration scheme (so far we've only looked at explicit Euler), we need to understand <strong>stability</strong>.</p>
+
+    <p>Consider a linear system of ODEs:</p>
+    $$\dot{y} = Ay$$
+
+    <p><strong>Critical observation:</strong> Depending on the eigenvalues of $A$, the ODE will have distinct character:</p>
+    <ul>
+        <li><strong>Hyperbolic PDEs</strong> correspond to <strong>purely imaginary eigenvalues</strong></li>
+        <li>We'll next cover some options that can handle purely imaginary eigenvalues</li>
+    </ul>
+
+    <p><strong>Important Note:</strong> Why is explicit integration important for ML applications?</p>
+
+    <p>In machine learning contexts, we need to evaluate gradients with respect to both state variables and parameters $\theta$. Implicit methods require solving nonlinear systems at each timestep, which is computationally expensive and complicates backpropagation. Explicit methods allow straightforward gradient flow through time integration.</p>
+
+    <h3>4.2 Two Classes of Explicit Methods</h3>
+
+    <p>Consider now the nonlinear system: $\ddot{x} = F(x; \theta)$</p>
+
+    <p>There are two broad classes of explicit methods:</p>
+
+    <h4>Multi-Stage Schemes (Runge-Kutta)</h4>
+
+    $$\begin{aligned}
+    k_i &= F\left(t_n + c_i h, x^n + h \sum_{j=1}^{i-1} a_{ij} k_j\right) \\
+    x^{n+1} &= x^n + h \sum_{i=1}^s b_i k_i
+    \end{aligned}$$
+
+    <p><strong>Idea:</strong> At each stage, you can make an additional gradient evaluation using points generated in previous stages.</p>
+
+    <h4>Multi-Step Schemes</h4>
+
+    $$\sum_{j=0}^{S-1} a_j x^{n+1-j} = h \sum_{j=0}^{S-1} b_j f(t_{n-j}, x_{n-j})$$
+
+    <p>where $a_0 = 1$. If $a_j = 0$ for $j > 0$, the scheme is explicit.</p>
+
+    <p><strong>Idea:</strong> Use information about the derivative from previous timesteps to predict the next state.</p>
+
+    <h3>4.3 Comparison</h3>
+
+    <p><strong>Multi-step methods:</strong></p>
+    <ul>
+        <li>Only need 1 function evaluation per step ⇒ generally faster</li>
+        <li>Complicated for first $s$ steps (need to "start up" with multi-stage methods)</li>
+    </ul>
+
+    <p><strong>Multi-stage methods:</strong></p>
+    <ul>
+        <li>Self-starting (no history required)</li>
+        <li>Easier to implement with variable timesteps</li>
+        <li>Natural for backpropagation through time</li>
+    </ul>
+
+    <p><strong>For simplicity, we'll just use multi-stage methods.</strong></p>
+
+    <h2>5. Runge-Kutta Schemes</h2>
+
+    <h3>5.1 Example: RK1 (Explicit Euler)</h3>
+
+    $$\begin{aligned}
+    k_1 &= F(t_n, x_n) \\
+    x_{n+1} &= x_n + h k_1
+    \end{aligned}$$
+
+    <p>This is our familiar explicit Euler method.</p>
+
+    <h3>5.2 Second-Order Schemes</h3>
+
+    <p>After explicit Euler (EE) for stage 1, make a second stage:</p>
+    $$\begin{aligned}
+    k_2 &= F(t_n + \alpha h, x_n + \beta h k_1) \\
+    x_{n+1} &= x_n + h(a k_1 + b k_2)
+    \end{aligned}$$
+
+    <p>To choose coefficients, expand in Taylor series and match to $\mathcal{O}(h^2)$:</p>
+
+    <div class="definition">
+        <p><strong>Coefficients must satisfy:</strong></p>
+        $$\begin{aligned}
+        a + b &= 1 \\
+        \alpha b &= 1/2 \\
+        \beta b &= 1/2
+        \end{aligned}$$
+        <p><strong>Result:</strong> Non-unique! Multiple second-order RK schemes exist.</p>
+    </div>
+
+    <p><strong>Example: RK2</strong> Take $a = b = 1/2$, then $\alpha = \beta = 1$:</p>
+    $$\begin{aligned}
+    k_1 &= F(t_n, x_n) \\
+    k_2 &= F(t_n + h, x_n + h k_1) \\
+    x_{n+1} &= x_n + \frac{h}{2}(k_1 + k_2)
+    \end{aligned}$$
+
+    <h3>5.3 Butcher Tableaux</h3>
+
+    <p>For the general $s$-stage scheme, coefficients are written compactly as a <strong>Butcher tableau</strong>:</p>
+
+    <table>
+        <tr>
+            <td>$c_1$</td>
+            <td>$a_{11}$</td>
+            <td>$a_{12}$</td>
+            <td>$\cdots$</td>
+            <td>$a_{1s}$</td>
+        </tr>
+        <tr>
+            <td>$c_2$</td>
+            <td>$a_{21}$</td>
+            <td>$a_{22}$</td>
+            <td>$\cdots$</td>
+            <td>$a_{2s}$</td>
+        </tr>
+        <tr>
+            <td>$\vdots$</td>
+            <td>$\vdots$</td>
+            <td>$\vdots$</td>
+            <td>$\ddots$</td>
+            <td>$\vdots$</td>
+        </tr>
+        <tr>
+            <td>$c_s$</td>
+            <td>$a_{s1}$</td>
+            <td>$a_{s2}$</td>
+            <td>$\cdots$</td>
+            <td>$a_{ss}$</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>$b_1$</td>
+            <td>$b_2$</td>
+            <td>$\cdots$</td>
+            <td>$b_s$</td>
+        </tr>
+    </table>
+
+    <p>For explicit methods, $a_{ij} = 0$ for $j \geq i$ (lower triangular with zero diagonal).</p>
+
+    <h3>5.4 Fourth-Order Method: Standard RK4</h3>
+
+    <table>
+        <tr>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>
+            <td>1/2</td>
+            <td>1/2</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>
+            <td>1/2</td>
+            <td>0</td>
+            <td>1/2</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>1</td>
+            <td>0</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>1/6</td>
+            <td>1/3</td>
+            <td>1/3</td>
+            <td>1/6</td>
+        </tr>
+    </table>
+
+    <p><strong>To understand why this is the default</strong>, we need to analyze the stability. We'll see that it works for purely imaginary problems (hyperbolic PDEs).</p>
+
+    <h2>6. Stability of Multi-Stage Schemes</h2>
+
+    <h3>6.1 Linear Stability Analysis</h3>
+
+    <p>Consider again $\dot{y} = Ay$. Let's analyze RK2:</p>
+
+    <div class="example-box">
+        <p><strong>Step 1:</strong> Write out the RK2 scheme:</p>
+        $$\begin{aligned}
+        y_{n+1} &= y_n + \frac{h}{2}(k_1 + k_2) \\
+        k_1 &= A y_n \\
+        k_2 &= A(y_n + h k_1) = A y_n + h A^2 y_n
+        \end{aligned}$$
+
+        <p><strong>Step 2:</strong> Substitute:</p>
+        $$y_{n+1} = \left(I + hA + \frac{h^2}{2} A^2\right) y_n$$
+
+        <p><strong>Step 3:</strong> Define amplification matrix:</p>
+        $$y_{n+1} = Q y_n \quad \text{where} \quad Q = I + hA + \frac{h^2}{2} A^2$$
+    </div>
+
+    <p><strong>Note:</strong> What drives the choices of coefficients in RK is that $Q \approx \exp(hA)$ (Taylor expansion of matrix exponential).</p>
+
+    <h3>6.2 Stability Condition</h3>
+
+    <div class="theorem-box">
+        <p>Consider an arbitrary scheme where $Q$ is diagonalizable:</p>
+        $$y_n = Q^n y_0$$
+
+        <p>If $Q = S \Lambda S^{-1}$ where $\Lambda = \text{diag}(\lambda_1, \ldots, \lambda_N)$, then component-wise:</p>
+        $$w_{n,i} = \lambda_i^n w_{0,i}$$
+
+        <p><strong>Stability condition:</strong> The solution is bounded if:</p>
+        $$\max_i |\lambda_i| \leq 1$$
+        <p>where $\lambda_i$ is the $i$-th eigenvalue of $Q$.</p>
+    </div>
+
+    <h3>6.3 Spectral Radius and Stability Region</h3>
+
+    <p><strong>Recall definition:</strong> The <strong>spectral radius</strong> is:</p>
+    $$\rho(A) = \max\{|\lambda_i| : \lambda_i \text{ is an eigenvalue of } A\}$$
+
+    <p>We want:</p>
+    $$\rho(Q) = \left| 1 + h\rho(A) + \frac{h^2}{2} \rho(A)^2 \right| \leq 1$$
+
+    <p>Let $z = h \rho(A) \in \mathbb{C}$ (complex number). Solve for $z$ such that:</p>
+    $$|g(z)| = \left| 1 + z + \frac{1}{2} z^2 \right| \leq 1$$
+
+    <p>The set of all such $z$ forms the <strong>stability region</strong> in the complex plane.</p>
+
+    <h3>6.4 Stability Regions for RK Methods</h3>
+
+    <p><strong>RK1 (Explicit Euler):</strong> Disk of radius 1 centered at $(-1, 0)$ in the complex plane.</p>
+
+    <p><strong>RK2:</strong> Stretches the stability region by approximately 3/2 in the imaginary direction.</p>
+
+    <p><strong>RK4:</strong> The standard RK4 has the largest stability region along the imaginary axis among explicit methods of its order, which is why it's the default choice for Hamiltonian/wave-like systems.</p>
+
+    <p><strong>Critical observation:</strong> For the wave equation (purely imaginary eigenvalues), we need stability regions that extend along the imaginary axis. RK4 provides the best balance of accuracy and stability for such problems.</p>
+
+    <h2>7. Symplectic Integrators</h2>
+
+    <h3>7.1 Hamiltonian Systems</h3>
+
+    <p>Recall that for a canonical Hamiltonian system:</p>
+    $$\begin{aligned}
+    \dot{p} &= -\partial_q H \\
+    \dot{q} &= \partial_p H
+    \end{aligned}$$
+
+    <p>with $\frac{dH}{dt} = 0$ (energy conservation).</p>
+
+    <p>Assuming the decomposition:</p>
+    $$H = \underbrace{T(p)}_{\text{kinetic}} + \underbrace{V(q)}_{\text{potential}}$$
+
+    <p>Then we want to solve:</p>
+    $$\begin{aligned}
+    \dot{p} &= -\partial_q V \\
+    \dot{q} &= \partial_p T
+    \end{aligned}$$
+
+    <h3>7.2 Störmer-Verlet / Leapfrog Integrator</h3>
+
+    <p><strong>Only works for separable Hamiltonians, no dissipation.</strong></p>
+
+    <div class="theorem-box">
+        <p>The <strong>Störmer-Verlet</strong> (also called <strong>leapfrog</strong>) integrator is a second-order symplectic method that exactly preserves the symplectic structure of Hamiltonian mechanics.</p>
+
+        <p><strong>Algorithm:</strong></p>
+
+        <p><strong>Step 1:</strong> Half-step momentum update:</p>
+        $$p_{n+1/2} = p_n - \frac{h}{2} \partial_q V(q_n)$$
+
+        <p><strong>Step 2:</strong> Full-step position update:</p>
+        $$q_{n+1} = q_n + h \partial_p T(p_{n+1/2})$$
+
+        <p><strong>Step 3:</strong> Half-step momentum update:</p>
+        $$p_{n+1} = p_{n+1/2} - \frac{h}{2} \partial_q V(q_{n+1})$$
+
+        <p><strong>Key Properties:</strong></p>
+        <ul>
+            <li><strong>Symplectic:</strong> Exactly preserves phase space volume</li>
+            <li><strong>Time-reversible:</strong> Running backward gives exact trajectory</li>
+            <li><strong>Energy-conserving:</strong> Bounded energy error over long times (no drift)</li>
+            <li><strong>Second-order accurate:</strong> $\mathcal{O}(h^2)$ local truncation error</li>
+        </ul>
+    </div>
+
+    <p>For kinetic energy $T(p) = \frac{1}{2m} p^2$, we have $\partial_p T = p/m$, so the position update simplifies to:</p>
+    $$q_{n+1} = q_n + \frac{h}{m} p_{n+1/2}$$
+
+    <p><strong>Important Note:</strong> The leapfrog structure (alternating half-steps) is what gives the method its symplectic property. This makes it ideal for long-time integration of conservative systems like our wave equation.</p>
+
+    <h2>Summary</h2>
+
+    <div class="summary-box">
+        <p>This lecture covered:</p>
+
+        <ol>
+            <li><strong>Synthesis of tools</strong> for building physics-informed neural architectures</li>
+            <li><strong>Variational derivation</strong> of the learnable wave equation using discrete action principles</li>
+            <li><strong>Hamiltonian formulation</strong> via Legendre transform</li>
+            <li><strong>Multi-stage integration</strong> methods (Runge-Kutta family)</li>
+            <li><strong>Butcher tableaux</strong> for compact representation of RK schemes</li>
+            <li><strong>Linear stability analysis</strong> and stability regions in the complex plane</li>
+            <li><strong>Störmer-Verlet integrator</strong> for symplectic time-stepping of Hamiltonian systems</li>
+        </ol>
+
+        <p><strong>Key Takeaway:</strong> For energy-conserving systems derived from variational principles, symplectic integrators like Störmer-Verlet provide exact conservation of phase space structure and bounded long-time energy behavior. Combined with learnable nonlinear stencils, these methods enable principled construction of physics-informed neural architectures for PDEs with guaranteed geometric properties. The choice of time integrator—whether high-order RK for accuracy or symplectic methods for conservation—depends critically on the eigenvalue structure and conservation requirements of the target system.</p>
+    </div>
+    
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>

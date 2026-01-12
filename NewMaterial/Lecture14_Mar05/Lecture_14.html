@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 14: Applications of Lax-Milgram and Introduction to Mixed FEM - ENM 5320</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        :root {
+            --penn-blue: #011F5B;
+            --penn-red: #990000;
+            --accent-blue: #82AFD3;
+            --light-bg: #F8F9FA;
+        }
+        body {
+            font-family: 'Georgia', serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: var(--penn-blue);
+            font-size: 2.2em;
+            border-bottom: 3px solid var(--penn-red);
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: var(--penn-blue);
+            margin-top: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: var(--penn-red);
+            margin-top: 20px;
+        }
+        .definition, .theorem-box, .example-box, .summary-box {
+            background: var(--light-bg);
+            border-left: 4px solid var(--penn-blue);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .summary-box {
+            background: #fff3cd;
+            border: 1px solid #F2C100;
+        }
+        .back-link {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: var(--penn-blue);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-link:hover {
+            background: var(--penn-red);
+        }
+        strong {
+            color: var(--penn-blue);
+        }
+        p {
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+        ul, ol {
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .katex-display {
+            margin: 1.5em 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        hr {
+            border: none;
+            border-top: 2px solid #e0e0e0;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+    
+    <h1>Lecture 14: Applications of Lax-Milgram and Introduction to Mixed FEM</h1>
+    
+    <p><strong>Date:</strong> March 21</p>
+    
+    <p><strong>Topics Covered:</strong></p>
+    <ul>
+        <li>Application of Lax-Milgram theory to various PDEs</li>
+        <li>Biharmonic equation (acoustics, phase field, beam bending)</li>
+        <li>Reaction-diffusion equation</li>
+        <li>Linear elasticity and near-incompressible limit</li>
+        <li>Breakdown of stability and need for mixed formulations</li>
+        <li>Introduction to mixed finite elements</li>
+        <li>Inf-sup (LBB) condition</li>
+        <li>Stokes problem as limiting case</li>
+    </ul>
+    
+    <p><strong>References:</strong> Johnson; Brenner & Scott</p>
+    
+    <hr>
+    
+    <h2>0. Overview</h2>
+    
+    <p>In the previous lecture, we developed the abstract <strong>Lax-Milgram theory</strong>, which provides existence, uniqueness, and stability for elliptic variational problems. Today, we put this theory into practice by analyzing several important PDEs from physics and engineering. We'll see how checking continuity and coercivity of the bilinear form $a(u,v)$ immediately guarantees well-posedness and convergence—this is the power of abstraction.</p>
+    
+    <p>We begin with the <strong>biharmonic equation</strong>, which governs phenomena from acoustics to beam bending. Then we tackle <strong>reaction-diffusion equations</strong> that model chemical reactions, population dynamics, and pattern formation. Most importantly, we'll examine <strong>linear elasticity</strong>, where a fascinating challenge emerges: as materials become nearly incompressible (like rubber or hydrogels), the Poisson ratio $\nu \to 1/2$ causes the Lamé parameter $\lambda \to \infty$, and our standard Galerkin formulation loses stability.</p>
+    
+    <p>This breakdown motivates <strong>mixed finite element methods</strong>, where we introduce additional variables (like pressure or stress) and solve for multiple coupled fields simultaneously. The key mathematical tool is the <strong>inf-sup condition</strong> (also called Ladyzhenskaya-Babuška-Brezzi or LBB condition), which prescribes precise compatibility requirements between the function spaces for different fields. We'll see this framework emerge naturally from the <strong>Stokes equations</strong> for incompressible fluid flow, which is the limiting case of nearly incompressible elasticity. Understanding when and why standard FEM fails, and how mixed methods rescue us, is crucial for building robust physics-informed learning algorithms.</p>
+    
+    <hr>
+    
+    <h2>1. Administrative Notes</h2>
+    
+    <p><strong>Final Exam:</strong> April 30th</p>
+    
+    <p><strong>Final Project:</strong> Plan projects now; presentations May 5-13</p>
+    
+    <hr>
+    
+    <h2>2. Review: Lax-Milgram Framework</h2>
+    
+    <p>Last time we established the abstract framework:</p>
+    
+    <p><strong>(G) Find $u \in V_h$ where $V_h \subseteq V$ such that:</strong></p>
+    $$a(u,v) = L(v) \quad \forall v \in V_h$$
+    
+    <p><strong>Lax-Milgram conditions:</strong></p>
+    
+    <div class="definition">
+        <p><strong>(1) Continuity:</strong> $a$ is continuous if</p>
+        $$|a(v,w)| \leq \gamma \|v\|_V \|w\|_V$$
+        
+        <p><strong>(2) Ellipticity (coercivity):</strong> $a$ is elliptic if</p>
+        $$a(v,v) \geq \alpha \|v\|_V^2$$
+        
+        <p><strong>(3) Bounded linear functional:</strong> $L$ is continuous if</p>
+        $$|L(v)| \leq \Lambda \|v\|_V$$
+    </div>
+    
+    <p><strong>If (1)-(3) hold, then:</strong></p>
+    <ul>
+        <li>Unique solution exists</li>
+        <li>Stability: $\|u\|_V \leq \Lambda/\alpha$</li>
+        <li><strong>Céa's Lemma:</strong> Quasi-optimality</li>
+    </ul>
+    
+    $$\boxed{\|u - u_h\|_V \leq \frac{\gamma}{\alpha} \inf_{v \in V_h} \|u - v\|_V}$$
+    
+    <hr>
+    
+    <h2>3. Application: Poisson Equation (Review)</h2>
+    
+    <h3>3.1 Problem Statement</h3>
+    
+    $$\begin{aligned}
+    -\nabla^2 u &= f \quad \text{in } \Omega \\
+    u|_{\partial\Omega} &= 0
+    \end{aligned}$$
+    
+    <h3>3.2 Weak Form</h3>
+    
+    $$\begin{aligned}
+    a(u,v) &= \int_\Omega \nabla u \cdot \nabla v \, dx \\
+    L(v) &= \int_\Omega f v \, dx
+    \end{aligned}$$
+    
+    <h3>3.3 Function Spaces</h3>
+    
+    <p><strong>Remember:</strong></p>
+    <ul>
+        <li>$L^2$ norm: $\|f\|_{L^2}^2 = \int f^2 \, dx$</li>
+        <li>$H^1$ seminorm: $|f|_{H^1}^2 = \int |\nabla f|^2 \, dx$</li>
+        <li>$H^1$ norm: $\|f\|_{H^1}^2 = \|f\|_{L^2}^2 + |f|_{H^1}^2$</li>
+    </ul>
+    
+    <p><strong>Choose:</strong> $V = H_0^1(\Omega)$ (functions with square-integrable first derivatives, zero on boundary)</p>
+    
+    <p><strong>Inner product:</strong></p>
+    $$(u,v)_V = \int_\Omega \nabla u \cdot \nabla v \, dx$$
+    
+    <h3>3.4 Verification of Lax-Milgram Conditions</h3>
+    
+    <p><strong>(1) Continuity:</strong></p>
+    $$\begin{aligned}
+    |a(v,w)| &= \left|\int \nabla v \cdot \nabla w \, dx\right| \\
+    &\leq \|\nabla v\|_{L^2} \|\nabla w\|_{L^2} \quad \text{(Cauchy-Schwarz)} \\
+    &\leq \|v\|_V \|w\|_V
+    \end{aligned}$$
+    
+    <p><strong>(2) Ellipticity:</strong></p>
+    $$a(v,v) = \int |\nabla v|^2 \, dx = |v|_{H^1}^2$$
+    
+    <p>For $v \in H_0^1$, by <strong>Poincaré inequality</strong>: $\|v\|_{L^2} \leq C |v|_{H^1}$</p>
+    
+    <p>Therefore: $a(v,v) \geq \alpha \|v\|_{H^1}^2$ for some $\alpha > 0$.</p>
+    
+    <p><strong>(3) Bounded functional:</strong></p>
+    $$|L(v)| \leq \|f\|_{L^2} \|v\|_{L^2} \leq \|f\|_{L^2} \|v\|_V$$
+    
+    <p><strong>All conditions satisfied!</strong> ✓</p>
+    
+    <hr>
+    
+    <h2>4. Application: Biharmonic Equation</h2>
+    
+    <h3>4.1 Physical Examples</h3>
+    
+    <p>The biharmonic equation arises in:</p>
+    <ul>
+        <li><strong>Acoustics</strong></li>
+        <li><strong>Phase field models</strong></li>
+        <li><strong>Beam bending</strong></li>
+        <li><strong>Thin plate theory</strong></li>
+    </ul>
+    
+    <h3>4.2 Problem Statement</h3>
+    
+    $$\begin{aligned}
+    \nabla^2 \nabla^2 u &= f \quad \text{in } \Omega \\
+    u|_{\partial\Omega} &= 0 \\
+    \partial_n u|_{\partial\Omega} &= 0
+    \end{aligned}$$
+    
+    <p>(Both function and normal derivative vanish on boundary—<strong>clamped plate conditions</strong>)</p>
+    
+    <h3>4.3 Function Space</h3>
+    
+    $$V = H^2(\Omega) = \left\{ u : \int (\nabla^2 u)^2 \, dx < \infty \right\}$$
+    
+    <p>(Functions with square-integrable second derivatives)</p>
+    
+    <h3>4.4 Weak Form</h3>
+    
+    $$\begin{aligned}
+    a(u,v) &= \int_\Omega \nabla^2 u \cdot \nabla^2 v \, dx \\
+    L(v) &= \int_\Omega f v \, dx
+    \end{aligned}$$
+    
+    <h3>4.5 Verification (Sketch)</h3>
+    
+    <p><strong>(1) Continuity:</strong> Follows from Cauchy-Schwarz</p>
+    
+    <p><strong>(2) Ellipticity:</strong> This is <strong>non-trivial</strong>—requires a result from PDEs called <strong>elliptic regularity</strong>:</p>
+    
+    <div class="theorem-box">
+        <p><strong>Elliptic regularity theorem:</strong> For convex $\Omega$,</p>
+        $$\|v\|_{H^2(\Omega)} \leq C \|\Delta v\|_{L^2(\Omega)} \quad \forall v \in H^2 \cap H_0^1$$
+        
+        <p>This ensures $a(v,v) \geq \alpha \|v\|_{H^2}^2$.</p>
+    </div>
+    
+    <p><strong>(3) Bounded functional:</strong></p>
+    $$|L(v)| \leq \|f\|_{L^2} \|v\|_{L^2} \leq \|f\|_{L^2} \|v\|_V$$
+    
+    <p><strong>All conditions satisfied!</strong> ✓</p>
+    
+    <hr>
+    
+    <h2>5. Application: Reaction-Diffusion Equation</h2>
+    
+    <h3>5.1 Problem Statement</h3>
+    
+    $$-\nabla \cdot (A \nabla u) + ru = f$$
+    
+    <p>with assumptions:</p>
+    <ul>
+        <li><strong>(A)</strong> $A$ is positive definite: $x^\top A x > 0$ for all $x \neq 0$</li>
+        <li><strong>(B)</strong> $r \geq 0$ (reaction coefficient non-negative)</li>
+        <li><strong>(C)</strong> $|A_{ij}| < \infty$, $|r| < \infty$ (bounded coefficients)</li>
+    </ul>
+    
+    <h3>5.2 Weak Form</h3>
+    
+    $$\begin{aligned}
+    a(u,v) &= \int_\Omega \nabla u \cdot A \cdot \nabla v + ruv \, dx \\
+    L(v) &= \int_\Omega fv \, dx
+    \end{aligned}$$
+    
+    <p>where $v \in H_0^1(\Omega)$.</p>
+    
+    <h3>5.3 Verification</h3>
+    
+    <p><strong>(1) Continuity:</strong></p>
+    
+    <p><strong>Diffusion term:</strong></p>
+    $$\begin{aligned}
+    \left|\int \nabla v \cdot A \cdot \nabla w \, dx\right| &\leq \max_{i,j} |A_{ij}| \left|\int \nabla v \cdot \nabla w \, dx\right| \\
+    &\leq \gamma_A |v|_{H^1} |w|_{H^1}
+    \end{aligned}$$
+    
+    <p><strong>Reaction term:</strong></p>
+    $$\left|\int r v w \, dx\right| \leq \max|r| \int |vw| \, dx \leq \gamma_r \|v\|_{L^2} \|w\|_{L^2}$$
+    
+    <p><strong>Combined:</strong></p>
+    $$|a(v,w)| \leq \gamma_A |v|_{H^1} |w|_{H^1} + \gamma_r \|v\|_{L^2} \|w\|_{L^2} \leq 2\max(\gamma_A, \gamma_r) \|v\|_{H^1} \|w\|_{H^1}$$
+    
+    <p><strong>(2) Ellipticity:</strong></p>
+    $$\begin{aligned}
+    a(u,u) &= \int \nabla u \cdot A \cdot \nabla u + ru^2 \, dx \\
+    &\geq \int |\nabla u|^2 + u^2 \, dx \quad \text{(by positive definiteness and } r \geq 0\text{)} \\
+    &= \|u\|_{H^1}^2
+    \end{aligned}$$
+    
+    <p><strong>(3) Bounded functional:</strong> Same as Poisson.</p>
+    
+    <p><strong>All conditions satisfied!</strong> ✓</p>
+    
+    <hr>
+    
+    <h2>6. Linear Elasticity: When Things Go Wrong</h2>
+    
+    <h3>6.1 Setup</h3>
+    
+    <p><strong>Displacement:</strong> $u \in \mathbb{R}^d$</p>
+    
+    <p><strong>Strain tensor:</strong></p>
+    $$\varepsilon(u) = \frac{1}{2}(\nabla u + \nabla u^\top) \in \mathbb{R}^{d \times d}$$
+    
+    <p>(symmetric part of displacement gradient)</p>
+    
+    <p><strong>Stress tensor:</strong> $\sigma(\varepsilon)$</p>
+    
+    <p><strong>Constitutive law (Hooke's law):</strong></p>
+    $$\sigma_{ij} = C_{ijkl} \varepsilon_{kl}$$
+    
+    <h3>6.2 Isotropic Materials</h3>
+    
+    <p>To enforce <strong>rotational invariance</strong> for isotropic materials:</p>
+    
+    $$C_{ijkl} = \lambda \delta_{ij} \delta_{kl} + \mu(\delta_{ik}\delta_{jl} + \delta_{il}\delta_{jk})$$
+    
+    <p>where:</p>
+    <ul>
+        <li>$\lambda$ = first Lamé parameter</li>
+        <li>$\mu$ = shear modulus (second Lamé parameter)</li>
+    </ul>
+    
+    <p>The stress reduces to:</p>
+    
+    $$\boxed{\sigma_{ij} = \lambda \delta_{ij} \varepsilon_{kk} + 2\mu \varepsilon_{ij}}$$
+    
+    <p>or in vector notation:</p>
+    
+    $$\sigma = 2\mu \varepsilon + \lambda \operatorname{tr}(\varepsilon) I$$
+    
+    <p><strong>Note:</strong> $\operatorname{tr}(\varepsilon) = \nabla \cdot u$ (volumetric strain)</p>
+    
+    <h3>6.3 Lagrangian Density</h3>
+    
+    <p>From variational mechanics, the Lagrangian density for elasticity is:</p>
+    
+    $$\mathcal{L} = -\frac{1}{2} \varepsilon^\top C \varepsilon + \frac{\rho}{2} (\partial_t u)^2$$
+    
+    <h3>6.4 Governing Equations</h3>
+    
+    $$\begin{cases}
+    -\operatorname{div} \sigma = f \\
+    \sigma = 2\mu \varepsilon + \lambda \operatorname{tr}(\varepsilon) I \\
+    u|_{\partial\Omega} = 0
+    \end{cases}$$
+    
+    <p>Combining:</p>
+    
+    $$\begin{cases}
+    -\nabla \cdot (2\mu \varepsilon(u) + \lambda \nabla \cdot u \, I) = f \\
+    u|_{\partial\Omega} = 0
+    \end{cases}$$
+    
+    <h3>6.5 Weak Form</h3>
+    
+    <p>Work with displacements in vector space:</p>
+    
+    $$\vec{u} \in \vec{H}_0^1(\Omega) = [H_0^1(\Omega)]^d$$
+    
+    <p>(i.e., each component is in $H_0^1$)</p>
+    
+    $$\boxed{a(u,v) = \int_\Omega \mu \varepsilon(u):\varepsilon(v) + \lambda(\nabla \cdot u)(\nabla \cdot v) \, dx}$$
+    
+    <p>where $A:B = \sum_{ij} A_{ij} B_{ij}$ is the <strong>Frobenius inner product</strong>.</p>
+    
+    <h3>6.6 The Poisson Ratio and Near-Incompressibility</h3>
+    
+    <p>The Lamé parameters relate to engineering constants via:</p>
+    
+    $$\lambda = \frac{2\mu \nu}{1 - 2\nu}$$
+    
+    <p>where $\nu$ is the <strong>Poisson ratio</strong>:</p>
+    
+    $$\nu = -\frac{\varepsilon_{\text{transverse}}}{\varepsilon_{\text{axial}}}$$
+    
+    <p><strong>Problem:</strong> For <strong>near-incompressible materials</strong> (e.g., rubber, hydrogels, clays, saturated porous media):</p>
+    
+    $$\nu \to \frac{1}{2} \quad \Rightarrow \quad \lambda \to \infty$$
+    
+    <p><strong>We need to understand the $\lambda \to \infty$ limiting stability!</strong></p>
+    
+    <h3>6.7 Korn's Inequality</h3>
+    
+    <p>To analyze this, we need <strong>Korn's inequality</strong>:</p>
+    
+    $$\boxed{\int \varepsilon(u):\varepsilon(u) \, dx \geq C \|u\|_{H^1}^2}$$
+    
+    <p>This says the strain energy controls the $H^1$ norm of displacement.</p>
+    
+    <h3>6.8 Verification of Lax-Milgram Conditions</h3>
+    
+    <p><strong>(1) Continuity:</strong></p>
+    
+    <p><strong>Strain energy term:</strong></p>
+    $$\begin{aligned}
+    \left|\int \mu \varepsilon(w):\varepsilon(v) \, dx\right| &= \left|\frac{\mu}{4} \sum_{i,j} \int (\partial_{x_i} w_j + \partial_{x_j} w_i)(\partial_{x_i} v_j + \partial_{x_j} v_i) \, dx\right| \\
+    &= \mu \sum_{i,j} \int |\partial_{x_i} w_j|^2 \, dx \\
+    &\leq \mu \|w\|_{H^1} \|v\|_{H^1}
+    \end{aligned}$$
+    
+    <p><strong>Volumetric term:</strong></p>
+    $$\left|\int \lambda (\nabla \cdot w)(\nabla \cdot v) \, dx\right| \leq \lambda \|w\|_{H^1} \|v\|_{H^1}$$
+    
+    <p><strong>Combined:</strong></p>
+    $$|a(w,v)| \leq (\mu + \lambda) \|w\|_{H^1} \|v\|_{H^1}$$
+    
+    <p><strong>(2) Ellipticity:</strong></p>
+    $$\begin{aligned}
+    a(u,u) &= \int \mu \varepsilon(u):\varepsilon(u) + \lambda(\nabla \cdot u)^2 \, dx \\
+    &\geq \int \mu \varepsilon(u):\varepsilon(u) \, dx \\
+    &\geq \mu \|u\|_{H^1}^2 \quad \text{(by Korn)}
+    \end{aligned}$$
+    
+    <h3>6.9 What Goes Wrong?</h3>
+    
+    <p>From Lax-Milgram:</p>
+    
+    <p><strong>(1) Stability:</strong> $\|u_h\|_{H^1} \leq \Lambda/\mu$ → <strong>Get a stable solution</strong></p>
+    
+    <p><strong>(2) By Céa's lemma:</strong></p>
+    $$\|u - u_h\|_{H^1} \leq \frac{\mu + \lambda}{\mu} \|u - v\|_{H^1}$$
+    
+    <p><strong>Problem:</strong> As $\lambda \to \infty$, the constant $\frac{\mu + \lambda}{\mu} \to \infty$!</p>
+    
+    <p><strong>The error bound blows up, even though a solution exists.</strong></p>
+    
+    <p>This is called <strong>locking</strong> in finite element analysis—the discrete solution loses accuracy as the material becomes incompressible.</p>
+    
+    <hr>
+    
+    <h2>7. Mixed Finite Element Methods: The Solution</h2>
+    
+    <h3>7.1 Reformulation</h3>
+    
+    <p>One solution to locking is <strong>mixed finite element methods</strong>.</p>
+    
+    <p>Take the original form:</p>
+    $$\mu \int \varepsilon(u):\varepsilon(v) \, dx + \lambda \int (\operatorname{div} u)(\operatorname{div} v) \, dx = \int f \cdot v \, dx$$
+    
+    <p><strong>Introduce new variable:</strong> Let $p = \lambda \operatorname{div} u$ (essentially a pressure).</p>
+    
+    <p>Introduce a second FEM space $q \in M_h$.</p>
+    
+    <h3>7.2 Mixed Formulation</h3>
+    
+    $$\begin{cases}
+    \mu \int \varepsilon(u):\varepsilon(v) \, dx + \int p \nabla \cdot v \, dx = \int f \cdot v \, dx \\
+    \int (\nabla \cdot u) q \, dx + \frac{1}{\lambda} \int pq \, dx = 0
+    \end{cases}$$
+    
+    <p>This gives a <strong>new Galerkin equation</strong>, but <strong>how do we choose $M_h$?</strong></p>
+    
+    <h3>7.3 The Stokes Problem as Limiting Case</h3>
+    
+    <p><strong>Note:</strong> In the limit $\mu = 1$, $\lambda \to \infty$, this reduces to the <strong>stationary Stokes problem</strong>:</p>
+    
+    $$(S) \quad \begin{cases}
+    -\Delta u - \nabla p = f \\
+    \nabla \cdot u = 0
+    \end{cases}$$
+    
+    <p>where:</p>
+    <ul>
+        <li>$u \in H_0^1$ (velocity field)</li>
+        <li>$p \in L^2$ (pressure)</li>
+    </ul>
+    
+    <p><strong>Physical interpretation:</strong> Incompressible viscous fluid flow.</p>
+    
+    <h3>7.4 Weak Form of Stokes</h3>
+    
+    <p>By integration by parts:</p>
+    $$(\nabla p, v) = -(p, \nabla \cdot v) \leq \|p\|_{L^2} \|v\|_{H^1}$$
+    
+    <p><strong>Galerkin form:</strong></p>
+    $$\begin{cases}
+    (\nabla u, \nabla v) + (p, \nabla \cdot v) = (f, v) & \forall v \in V_h \\
+    (\nabla \cdot u, q) = 0 & \forall q \in M_h
+    \end{cases}$$
+    
+    <p>This is a <strong>saddle-point problem</strong> (not a minimization).</p>
+    
+    <hr>
+    
+    <h2>8. Stability of Mixed Methods</h2>
+    
+    <h3>8.1 Uniqueness (Partial)</h3>
+    
+    <p>We can prove uniqueness <strong>quickly</strong> for the case $f = 0 \Rightarrow p, u = 0$.</p>
+    
+    <p><strong>Step 1:</strong> Take $v = u$ in momentum equation:</p>
+    $$\|u\|_{H^1}^2 + (p, \nabla \cdot u) = 0$$
+    
+    <p><strong>Step 2:</strong> Take $q = p$ in continuity equation:</p>
+    $$(\nabla \cdot u, p) = 0$$
+    
+    <p><strong>Step 3:</strong> Substitute into Step 1:</p>
+    $$\|u\|_{H^1}^2 = 0 \quad \Rightarrow \quad u = 0$$
+    
+    <p><strong>Problem:</strong> We'd like to show $u = 0 \Rightarrow p = 0$, but <strong>we can't!</strong></p>
+    
+    <p>Nothing in the equations directly gives us information about $p$ when $u = 0$.</p>
+    
+    <p><strong>Key idea:</strong> Design a relationship between $V_h$ and $M_h$ so that $u = 0 \Rightarrow p = 0$.</p>
+    
+    <hr>
+    
+    <h2>9. The Inf-Sup Condition</h2>
+    
+    <h3>9.1 Definition</h3>
+    
+    <p>$V_h$ and $M_h$ are <strong>inf-sup compatible</strong> if:</p>
+    
+    <div class="theorem-box">
+        <p><strong>For any $q \in M_h$, there exists $v \in V_h$ such that:</strong></p>
+        
+        $$\boxed{\beta \|q\|_{L^2} \leq \frac{(q, \nabla \cdot v)}{\|v\|_{H^1}}}$$
+        
+        <p>for some constant $\beta > 0$ independent of $h$.</p>
+    </div>
+    
+    <p><strong>This is also called:</strong></p>
+    <ul>
+        <li><strong>Ladyzhenskaya-Babuška-Brezzi (LBB) condition</strong></li>
+        <li><strong>Babuška-Brezzi condition</strong></li>
+        <li><strong>Inf-sup condition</strong></li>
+    </ul>
+    
+    <h3>9.2 Using Inf-Sup to Prove Uniqueness</h3>
+    
+    <p>Return to Stokes momentum equation with $f = 0$:</p>
+    
+    $$(\nabla u, \nabla v) + (p, \nabla \cdot v) = 0$$
+    
+    <p>We already showed $u = 0$.</p>
+    
+    <p><strong>Take $q = p$ and use inf-sup:</strong></p>
+    
+    $$\|p\|_{L^2} \leq \frac{(p, \nabla \cdot v)}{\beta \|v\|_{H^1}} = \frac{0}{\beta \|v\|_{H^1}} = 0$$
+    
+    <p><strong>Therefore:</strong> $p = 0$ ✓</p>
+    
+    <h3>9.3 Physical Interpretation</h3>
+    
+    <p>The inf-sup condition ensures that <strong>pressure can be uniquely determined from velocity</strong>.</p>
+    
+    <p>Without it, the pressure is under-determined (non-unique), leading to spurious pressure modes and numerical instabilities.</p>
+    
+    <p><strong>Geometrically:</strong> It says that the divergence operator from $V_h$ to $M_h$ has a bounded inverse (in a weak sense).</p>
+    
+    <hr>
+    
+    <h2>10. Summary</h2>
+    
+    <div class="summary-box">
+        <p>This lecture covered:</p>
+        <ol>
+            <li><strong>Application of Lax-Milgram</strong> to Poisson, biharmonic, and reaction-diffusion equations</li>
+            <li><strong>Linear elasticity</strong> formulation with Lamé parameters</li>
+            <li><strong>Near-incompressibility</strong> ($\nu \to 1/2$) and breakdown of standard FEM (locking)</li>
+            <li><strong>Korn's inequality</strong> for ellipticity of elasticity operator</li>
+            <li><strong>Mixed finite element methods</strong> as solution to locking</li>
+            <li><strong>Stokes problem</strong> as limiting case of incompressible elasticity</li>
+            <li><strong>Saddle-point structure</strong> of mixed formulations</li>
+            <li><strong>Inf-sup (LBB) condition</strong> for stability and uniqueness of pressure</li>
+        </ol>
+        
+        <p><strong>Key Takeaway:</strong> Not all PDEs can be solved with standard Galerkin FEM. When dealing with near-incompressibility (elasticity, Stokes flow), or more generally when solving for multiple coupled fields with different regularity requirements, we need <strong>mixed finite element methods</strong>. The inf-sup condition provides the mathematical criterion for choosing compatible function spaces $V_h$ and $M_h$—violate it, and you get spurious modes, locking, or non-unique solutions. Understanding this framework is essential for physics-informed machine learning: when learning operators or spaces for coupled multiphysics problems, we must preserve the algebraic structure (saddle-point form) and ensure learned spaces satisfy inf-sup compatibility to guarantee well-posed discrete problems.</p>
+        
+        <p><strong>Next time:</strong> How to build inf-sup stable spaces in practice; How to learn physics in the mixed FEM setting</p>
+    </div>
+    
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>

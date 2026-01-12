@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 17: Helmholtz-Hodge Decomposition and Graph Calculus</title>
+    
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    
+    <!-- KaTeX Auto-render -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });"></script>
+    
+    <style>
+        :root {
+            --penn-blue: #011F5B;
+            --penn-red: #990000;
+            --light-gray: #f5f5f5;
+            --border-gray: #ddd;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--penn-blue) 0%, #012a7a 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .topics {
+            background-color: var(--light-gray);
+            padding: 1.5rem;
+            border-left: 4px solid var(--penn-red);
+            margin: 2rem 0;
+            border-radius: 5px;
+        }
+        
+        .topics h3 {
+            color: var(--penn-blue);
+            margin-bottom: 0.5rem;
+        }
+        
+        .topics ul {
+            margin-left: 1.5rem;
+        }
+        
+        .topics li {
+            margin: 0.3rem 0;
+        }
+        
+        h2 {
+            color: var(--penn-blue);
+            font-size: 1.75rem;
+            margin: 2.5rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--penn-red);
+        }
+        
+        h3 {
+            color: var(--penn-blue);
+            font-size: 1.35rem;
+            margin: 2rem 0 1rem 0;
+        }
+        
+        h4 {
+            color: var(--penn-blue);
+            font-size: 1.1rem;
+            margin: 1.5rem 0 0.75rem 0;
+        }
+        
+        p {
+            margin: 1rem 0;
+            text-align: justify;
+        }
+        
+        .katex-display {
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        
+        .katex {
+            font-size: 1.1em;
+        }
+        
+        code {
+            background-color: var(--light-gray);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+        }
+        
+        strong {
+            color: var(--penn-blue);
+            font-weight: 600;
+        }
+        
+        em {
+            color: var(--penn-red);
+            font-style: italic;
+        }
+        
+        .summary-box {
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+            padding: 2rem;
+            border-left: 5px solid var(--penn-blue);
+            border-radius: 8px;
+            margin: 3rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .summary-box h2 {
+            border-bottom: none;
+            margin-top: 0;
+        }
+        
+        .summary-box ul {
+            margin-left: 1.5rem;
+        }
+        
+        .summary-box li {
+            margin: 0.5rem 0;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin: 2rem 0;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--penn-blue);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background-color: #023875;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid var(--border-gray);
+            margin: 2rem 0;
+        }
+        
+        ul, ol {
+            margin: 1rem 0 1rem 2rem;
+        }
+        
+        li {
+            margin: 0.5rem 0;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            header {
+                padding: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+            
+            h3 {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+    
+    <header>
+        <h1>Lecture 17: Helmholtz-Hodge Decomposition and Graph Calculus</h1>
+        <p class="subtitle">Reference: Lecture 17 - Hodge Decomposition and Applications</p>
+    </header>
+    
+    <div class="topics">
+        <h3>Topics Covered:</h3>
+        <ul>
+            <li>Vector calculus review: Levi-Civita tensor and exact sequences</li>
+            <li>Helmholtz-Hodge decomposition theorem</li>
+            <li>Projections onto curl-free and divergence-free spaces</li>
+            <li>Graph Hodge decomposition</li>
+            <li>Applications to recommender systems and causal inference</li>
+        </ul>
+    </div>
+    
+    <section id="overview">
+        <p>This lecture brings together several threads from the course: vector calculus identities, mixed finite element methods, and graph theory. The unifying concept is the <strong>Helmholtz-Hodge decomposition</strong>, which states that any vector field can be uniquely decomposed into a gradient (curl-free) part and a curl (divergence-free) part.</p>
+        
+        <p>This decomposition has profound implications across physics and machine learning. In fluid mechanics, it provides a way to enforce incompressibility constraints without solving large saddle-point problems—leading to <strong>projection methods</strong> that are computationally efficient. In electromagnetics, it separates electric and magnetic contributions. In machine learning on graphs, it enables structured models for recommendation systems and causal discovery.</p>
+        
+        <p>We begin with a review of vector calculus using the <strong>Levi-Civita tensor</strong>, providing compact notation for curl operations and proving the fundamental exact sequence property: $\nabla \cdot \nabla \times = 0$ and $\nabla \times \nabla = 0$. We then prove the Helmholtz-Hodge decomposition by solving two Poisson problems, carefully handling the null spaces that arise. The continuous theory translates directly to graphs, where we construct a <strong>graph Hodge decomposition</strong> using coboundary operators.</p>
+        
+        <p>Finally, we explore applications: the <strong>Chorin projection method</strong> for incompressible Navier-Stokes, recommender systems that learn preference functions on graphs, and <strong>causal inference</strong> where fluxes define parent-child relationships in probabilistic graphical models.</p>
+    </section>
+    
+    <h2>1. Vector Calculus Review</h2>
+    
+    <h3>1.1 The Levi-Civita Tensor</h3>
+    
+    <p><strong>Reference:</strong> "Div, Grad, Curl, and All That" by H.M. Schey</p>
+    
+    <p>Recall the <strong>Levi-Civita tensor</strong> $\varepsilon_{ijk}$ satisfying:</p>
+    
+    $$
+    \varepsilon_{ijk} = \begin{cases}
+    +1 & \text{even permutations of } (1,2,3) \\
+    -1 & \text{odd permutations} \\
+    0 & \text{equal indices}
+    \end{cases}
+    $$
+    
+    <p>This provides a <strong>compact notation for curl</strong>:</p>
+    
+    $$
+    (\vec{F} \times \vec{G})_i = \varepsilon_{ijk} F_j G_k
+    $$
+    
+    <p><strong>Pedagogical note:</strong> The Levi-Civita tensor converts cross products into index manipulations, making proofs mechanical and eliminating the need for component-wise calculations.</p>
+    
+    <h3>1.2 Exact Sequence Properties</h3>
+    
+    <p>Some identities—analogous to the exact sequence property:</p>
+    
+    $$
+    \nabla \cdot \nabla \times u = 0 \quad \text{and} \quad \nabla \times \nabla \phi = 0
+    $$
+    
+    <p><strong>Proof (Divergence of Curl):</strong></p>
+    
+    <p>Adopting <strong>Einstein notation</strong> (repeated indices are summed):</p>
+    
+    <p><strong>Step 1:</strong> Write curl in index notation:</p>
+    
+    $$
+    (\nabla \times u)_i = \varepsilon_{ijk} \partial_{x_j} u_k
+    $$
+    
+    <p><strong>Step 2:</strong> Take divergence:</p>
+    
+    $$
+    \nabla \cdot \nabla \times u = \varepsilon_{ijk} \partial_{x_i} \partial_{x_j} u_k
+    $$
+    
+    <p><strong>Step 3:</strong> Symmetrize with respect to $i,j$ (partial derivatives commute):</p>
+    
+    $$
+    = \frac{1}{2} \varepsilon_{ijk} \partial_{x_i} \partial_{x_j} u_k + \frac{1}{2} \varepsilon_{jik} \partial_{x_j} \partial_{x_i} u_k
+    $$
+    
+    <p><strong>Step 4:</strong> Swap dummy indices in second term:</p>
+    
+    $$
+    = \frac{1}{2}(\varepsilon_{ijk} + \varepsilon_{jik}) \partial_{x_i} \partial_{x_j} u_k
+    $$
+    
+    <p><strong>Step 5:</strong> Note that $\varepsilon_{jik} = -\varepsilon_{ijk}$ (odd permutation), so:</p>
+    
+    $$
+    = 0
+    $$
+    
+    <p><strong>Proof (Curl of Gradient):</strong> Similarly,</p>
+    
+    $$
+    \begin{aligned}
+    (\nabla \times \nabla \phi)_i &= \varepsilon_{ijk} \partial_{x_j} \partial_{x_k} \phi \\
+    &= \frac{1}{2}(\varepsilon_{ijk} + \varepsilon_{ikj}) \partial_{x_j} \partial_{x_k} \phi \\
+    &= 0
+    \end{aligned}
+    $$
+    
+    <p>since $\varepsilon_{ikj} = -\varepsilon_{ijk}$.</p>
+    
+    <h2>2. Helmholtz-Hodge Decomposition</h2>
+    
+    <h3>2.1 Statement of Theorem</h3>
+    
+    <p><strong>Theorem (Helmholtz-Hodge Decomposition):</strong> Given a smooth vector field $F \in \mathbb{R}^d$ on a simply connected subset of $\mathbb{R}^d$, there exist unique scalar potential $\phi$ and vector potential $A$ such that:</p>
+    
+    $$
+    F = -\nabla \phi + \nabla \times A
+    $$
+    
+    <p>where:</p>
+    <ul>
+        <li>$-\nabla \phi$ is <strong>curl-free</strong> (irrotational)</li>
+        <li>$\nabla \times A$ is <strong>divergence-free</strong> (solenoidal)</li>
+    </ul>
+    
+    <h3>2.2 Proof: Finding the Scalar Potential</h3>
+    
+    <p><strong>Step 1:</strong> Take divergence of both sides:</p>
+    
+    $$
+    \nabla \cdot F = -\nabla \cdot \nabla \phi + \nabla \cdot (\nabla \times A)
+    $$
+    
+    <p><strong>Step 2:</strong> Use $\nabla \cdot (\nabla \times A) = 0$:</p>
+    
+    $$
+    \nabla \cdot F = -\nabla^2 \phi
+    $$
+    
+    <p><strong>Step 3:</strong> This gives a <strong>pure Neumann Poisson problem</strong>:</p>
+    
+    $$
+    \begin{cases}
+    -\nabla^2 \phi = \nabla \cdot F \\
+    \left. \partial_n \phi \right|_{\partial \Omega} = -F \cdot \hat{n}
+    \end{cases}
+    $$
+    
+    <p><strong>Important Note:</strong> This problem has a constant vector in its <strong>null space</strong>. For any constant $c$:</p>
+    
+    $$
+    \begin{aligned}
+    \nabla^2(\phi + c) &= \nabla^2 \phi \\
+    \partial_n(\phi + c) &= \partial_n \phi
+    \end{aligned}
+    $$
+    
+    <p><strong>Step 4:</strong> To maintain coercivity in Lax-Milgram, need to work in a space orthogonal to the kernel:</p>
+    
+    $$
+    V_h = \{\text{CPWL functions } u \mid u \cdot \vec{1} = 0\}
+    $$
+    
+    <p><strong>Alternative:</strong> Enforce with a Lagrange multiplier:</p>
+    
+    $$
+    \min_\phi \int_\Omega \frac{1}{2}|\nabla \phi|^2 - \phi \nabla \cdot F \, dx + \lambda(\phi \cdot \vec{1}) + \int_{\partial \Omega} F \cdot \phi \, dA
+    $$
+    
+    <h3>2.3 Proof: Finding the Vector Potential</h3>
+    
+    <p><strong>Step 1:</strong> Take curl of both sides:</p>
+    
+    $$
+    \nabla \times F = -\nabla \times \nabla \phi + \nabla \times \nabla \times A
+    $$
+    
+    <p><strong>Step 2:</strong> Use $\nabla \times \nabla \phi = 0$:</p>
+    
+    $$
+    \nabla \times F = \nabla \times \nabla \times A
+    $$
+    
+    <p><strong>Step 3:</strong> Now we have a more challenging null space. For any $q$:</p>
+    
+    $$
+    \nabla \times \nabla \times (A + \nabla q) = \nabla \times \nabla \times A
+    $$
+    
+    <p>So we'd like solutions orthogonal to $\nabla q$ for any $q$:</p>
+    
+    $$
+    (A, \nabla q) = 0 \quad \forall q
+    $$
+    
+    <p><strong>Step 4:</strong> Applying Galerkin:</p>
+    
+    $$
+    (\nabla \times \nabla \times A, v) = (\nabla \times F, v)
+    $$
+    
+    <p><strong>Step 5:</strong> Integrate by parts:</p>
+    
+    $$
+    (\nabla \times A, \nabla \times v) + \int_{\partial \Omega} (\nabla \times A \times \hat{n}) \cdot v \, dA = (\nabla \times F, v)
+    $$
+    
+    <p><strong>Natural BC:</strong></p>
+    
+    $$
+    \nabla \times A \times \hat{n} = \nabla \times F \times \hat{n}
+    $$
+    
+    <p><strong>Step 6:</strong> Enforce orthogonality with <strong>Lagrange multiplier</strong>:</p>
+    
+    $$
+    \begin{aligned}
+    (\nabla \times \nabla \times A, v) + (\nabla \lambda, v) &= (\nabla \times F, v) - \langle \nabla \times F \times \hat{n}, v \rangle \\
+    (A, \nabla q) &= 0
+    \end{aligned}
+    $$
+    
+    <p><strong>Critical observation:</strong> This is a saddle-point problem that we showed how to approach last week.</p>
+    
+    <h2>3. Applications of Hodge Decomposition</h2>
+    
+    <h3>3.1 Projection Operators</h3>
+    
+    <p>The Hodge decomposition provides useful tools for <strong>projecting onto divergence-free or curl-free spaces</strong>:</p>
+    
+    $$
+    \begin{aligned}
+    \pi_{\text{div-free}} u &= \nabla \times A \\
+    \pi_{\text{curl-free}} u &= -\nabla \phi
+    \end{aligned}
+    $$
+    
+    <h3>3.2 Potential Flow (Fluid Mechanics)</h3>
+    
+    <p><strong>Potential flow</strong> was an early model of fluids (with large, restrictive assumptions) used to design airfoils in the 1920s-1940s.</p>
+    
+    <p><strong>Assumptions:</strong></p>
+    
+    $$
+    \begin{cases}
+    u = -\nabla \phi \\
+    \nabla \cdot u = 0
+    \end{cases}
+    $$
+    
+    <p><strong>Result:</strong> Given boundary conditions, solve:</p>
+    
+    $$
+    \begin{cases}
+    -\nabla^2 \phi = 0 \\
+    \left. \partial_n \phi \right|_{\partial \Omega} = u \cdot \hat{n}
+    \end{cases}
+    $$
+    
+    <p><strong>Note:</strong> No FEM back then → Laplace transforms, etc. You'll still see this in graduate fluid mechanics courses!</p>
+    
+    <h3>3.3 Chorin Projection Method (1968)</h3>
+    
+    <p>When solving <strong>Navier-Stokes with incompressibility</strong>:</p>
+    
+    $$
+    \begin{aligned}
+    \partial_t u + u \cdot \nabla u &= -\nabla p + \nu \nabla^2 u \\
+    \nabla \cdot u &= 0
+    \end{aligned}
+    $$
+    
+    <p>The incompressibility constraint is annoying:</p>
+    <ul>
+        <li>Makes system bigger</li>
+        <li>How to choose inf-sup compatible $u, p$?</li>
+        <li>Couples all points in domain</li>
+    </ul>
+    
+    <p><strong>A popular scheme</strong> (Alexandre Chorin, 1968), called a <strong>splitting scheme</strong>:</p>
+    
+    <p><strong>Step 1:</strong> Advection-diffusion step (ignoring pressure):</p>
+    
+    $$
+    \frac{u^* - u^n}{k} = -u^n \cdot \nabla u^n + \nu \nabla^2 u^*
+    $$
+    
+    <p><strong>Step 2a:</strong> Pressure-projection step:</p>
+    
+    $$
+    \begin{cases}
+    \frac{u^{n+1} - u^*}{k} = -\nabla p^{n+1} \\
+    \nabla \cdot u^{n+1} = 0
+    \end{cases}
+    $$
+    
+    <p><strong>Step 2b:</strong> Taking divergence of Step 2a:</p>
+    
+    $$
+    \frac{\nabla \cdot u^{n+1} - \nabla \cdot u^*}{k} = -\nabla^2 p^{n+1}
+    $$
+    
+    <p>or:</p>
+    
+    $$
+    u^{n+1} = \pi_{\text{div-free}} u^* = u^* - \nabla p^{n+1}
+    $$
+    
+    <p><strong>This is the pressure-projection method!</strong></p>
+    
+    <h2>4. Graph Hodge Decomposition</h2>
+    
+    <h3>4.1 Review of Graph Operators</h3>
+    
+    <p>We introduced grad/div as a coboundary/codifferential pair:</p>
+    
+    $$
+    \langle v, \delta_0 u \rangle = \langle \delta_0^* v, u \rangle
+    $$
+    
+    <p>Now for the formal definitions so we can talk about curl.</p>
+    
+    <p><strong>Definition:</strong> A <strong>$k$-chain</strong> $C^k = [v_1, \ldots, v_k]_{v_i \in V}$ is anti-symmetric with respect to vertex swaps.</p>
+    
+    <p><strong>Definition:</strong> The <strong>boundary operator</strong> $\partial_{k-1} : C^k \to C^{k-1}$ is:</p>
+    
+    $$
+    \partial_{k-1}[v_1, \ldots, v_k] = \sum_{i=1}^k (-1)^{i-1} [v_1, \ldots, \hat{v}_i, \ldots, v_k]
+    $$
+    
+    <p>where $\hat{v}_i$ means "leave this vertex out."</p>
+    
+    <h3>4.2 Example: Edge Boundary</h3>
+    
+    <p>For edge $[v_1, v_2] = -[v_2, v_1]$:</p>
+    
+    $$
+    \begin{aligned}
+    \partial_0[v_1, v_2] &= (-1)^0 [v_2] + (-1)^1 [v_1] \\
+    &= v_2 - v_1
+    \end{aligned}
+    $$
+    
+    <h3>4.3 Exact Sequence Property</h3>
+    
+    <p><strong>Theorem:</strong> $\partial_{k-1} \circ \partial_k = 0$</p>
+    
+    <p><strong>Proof:</strong> Given $c \in C^{k+1}$:</p>
+    
+    $$
+    \begin{aligned}
+    \partial_{k-1} \partial_k c &= \sum_{i=1}^k (-1)^{i-1} \partial_k [v_1, \ldots, \hat{v}_i, \ldots, v_{k+1}] \\
+    &= \sum_{i,j} (-1)^{i-1} (-1)^{j-1} [v_1, \ldots, \hat{v}_i, \ldots, \hat{v}_j, \ldots, v_k] \\
+    &= \sum_{i,j} (-1)^{i+j-2} \alpha_{ij}
+    \end{aligned}
+    $$
+    
+    <p><strong>Note:</strong> $\alpha_{ij} = -\alpha_{ji}$ (anti-symmetric if we exchange $i,j$), so the sum vanishes:</p>
+    
+    $$
+    = 0
+    $$
+    
+    <h3>4.4 Coboundary Operators</h3>
+    
+    <p>To define the coboundary (divergence/curl), just swap chains with cochains.</p>
+    
+    <p>For $f \in C_k$:</p>
+    
+    $$
+    \delta_{k-1} f = \sum (-1)^i f(v_1, \ldots, \hat{v}_i, \ldots, v_k)
+    $$
+    
+    <p><strong>Examples:</strong></p>
+    
+    $$
+    \begin{aligned}
+    \delta_0 \phi_{ij} &= \phi_j - \phi_i \quad \text{(graph gradient)} \\
+    \delta_1 A_{ijk} &= A_{ij} + A_{jk} + A_{ki} \quad \text{(graph curl)}
+    \end{aligned}
+    $$
+    
+    <p><strong>Verification:</strong> Curl of gradient is zero:</p>
+    
+    $$
+    \begin{aligned}
+    \delta_1 \delta_0 \phi &= \delta_0 \phi_{ij} + \delta_0 \phi_{jk} + \delta_0 \phi_{ki} \\
+    &= (\phi_j - \phi_i) + (\phi_k - \phi_j) + (\phi_i - \phi_k) \\
+    &= 0
+    \end{aligned}
+    $$
+    
+    <h3>4.5 Divergence of Curl is Zero</h3>
+    
+    <p>If $\delta_1 \delta_0 = 0$, then $\delta_0^* \delta_1^* = 0$ (divergence of curl is zero):</p>
+    
+    $$
+    \begin{aligned}
+    \langle f, \delta_0^* \delta_1^* g \rangle &= \langle \delta_0 f, \delta_1^* g \rangle \\
+    &= \langle \delta_1 \delta_0 f, g \rangle \\
+    &= 0
+    \end{aligned}
+    $$
+    
+    <p>Recall the operator identities:</p>
+    
+    $$
+    \begin{array}{ll}
+    \delta_0 = \text{grad} & \delta_0^* = \text{div} \\
+    \delta_1 = \text{curl} & \delta_1^* = \text{curl}
+    \end{array}
+    $$
+    
+    <h3>4.6 Graph Hodge Decomposition Theorem</h3>
+    
+    <p><strong>Theorem:</strong> Given $f \in C_k$:</p>
+    
+    $$
+    f = \delta_0 \phi + \delta_1^* A
+    $$
+    
+    <p><strong>Proof:</strong> Apply operators:</p>
+    
+    $$
+    \begin{aligned}
+    \delta_0^* f &= \delta_0^* \delta_0 \phi + \delta_0^* \delta_1^* A \\
+    \delta_1 f &= \delta_1 \delta_0 \phi + \delta_1 \delta_1^* A
+    \end{aligned}
+    $$
+    
+    <p><strong>Critical observation:</strong> These are graph Laplacian equations that can be solved separately!</p>
+    
+    <h2>5. Applications to Machine Learning</h2>
+    
+    <h3>5.1 Recommender Systems</h3>
+    
+    <p>Given observations on some preferences $Y_{ij}^{\text{data}}$:</p>
+    
+    $$
+    \min_s \sum_{i,j} w_{ij} (Y_{ij}^{\text{data}} - \delta_0 s_{ij})^2
+    $$
+    
+    <p><strong>Take the variation</strong> (HW exercise):</p>
+    
+    $$
+    \delta_0^* W \delta_0 s = \delta_0^* W Y^{\text{data}}
+    $$
+    
+    <p><strong>This is a weighted graph Laplacian!</strong></p>
+    
+    <h3>5.2 Causality</h3>
+    
+    <p>Given a set of events $X_i$, a <strong>causal structural model</strong> is a decomposition:</p>
+    
+    $$
+    P(x_1, \ldots, x_N) = \prod_{i=1}^N P(x_i \mid \text{Pa}(x_i))
+    $$
+    
+    <p>where $\text{Pa}(x_i)$ are the parents of $x_i$.</p>
+    
+    <p><strong>Graph-based approach:</strong> Define a score $s_i$ and compute:</p>
+    
+    $$
+    \text{flux } F = \delta_0 s
+    $$
+    
+    <p>Define parents as:</p>
+    
+    $$
+    \text{Pa}(x_i) = \{x_j \text{ s.t. } F_{ij} \to 0\}
+    $$
+    
+    <p>or a differentiable version:</p>
+    
+    $$
+    \text{Pa}(x_i) = \left\{ \text{ReLU}\left( \tanh\left( \frac{1}{\beta} F_{ij} \right) \right) \geq \epsilon \right\}
+    $$
+    
+    <p><strong>Interpretation:</strong> Causal relationships are identified by significant flux values, naturally incorporating graph structure into causal discovery algorithms.</p>
+    
+    <div class="summary-box">
+        <h2>Summary</h2>
+        
+        <p>This lecture covered:</p>
+        
+        <ol>
+            <li><strong>Vector calculus review</strong> using Levi-Civita tensor notation</li>
+            <li><strong>Exact sequence properties</strong>: $\nabla \cdot \nabla \times = 0$ and $\nabla \times \nabla = 0$</li>
+            <li><strong>Helmholtz-Hodge decomposition</strong> theorem and proof</li>
+            <li><strong>Null space handling</strong> via Lagrange multipliers</li>
+            <li><strong>Projection methods</strong> for incompressible flow (Chorin scheme)</li>
+            <li><strong>Graph Hodge decomposition</strong> and exact sequences on graphs</li>
+            <li><strong>Applications</strong> to recommender systems and causal inference</li>
+        </ol>
+        
+        <p><strong>Key Takeaway:</strong> The Helmholtz-Hodge decomposition $F = -\nabla \phi + \nabla \times A$ provides a fundamental splitting of vector fields into curl-free and divergence-free components. This decomposition has computational advantages (splitting large problems into smaller ones), physical interpretations (separating irrotational and rotational flow), and extends naturally to graphs via coboundary operators. The projection method for Navier-Stokes exemplifies how Hodge decomposition enables efficient algorithms by decoupling advection-diffusion from pressure-projection steps. On graphs, the discrete Hodge decomposition provides a principled framework for structured learning in recommender systems and causal inference.</p>
+    </div>
+    
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+</body>
+</html>

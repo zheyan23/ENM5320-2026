@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 15: Conservation Laws and De Rham Complexes - ENM 5320</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        :root {
+            --penn-blue: #011F5B;
+            --penn-red: #990000;
+            --accent-blue: #82AFD3;
+            --light-bg: #F8F9FA;
+        }
+        body {
+            font-family: 'Georgia', serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: var(--penn-blue);
+            font-size: 2.2em;
+            border-bottom: 3px solid var(--penn-red);
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: var(--penn-blue);
+            margin-top: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: var(--penn-red);
+            margin-top: 20px;
+        }
+        .definition, .theorem-box, .example-box, .summary-box {
+            background: var(--light-bg);
+            border-left: 4px solid var(--penn-blue);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .summary-box {
+            background: #fff3cd;
+            border: 1px solid #F2C100;
+        }
+        .back-link {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: var(--penn-blue);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-link:hover {
+            background: var(--penn-red);
+        }
+        strong {
+            color: var(--penn-blue);
+        }
+        p {
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+        ul, ol {
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .katex-display {
+            margin: 1.5em 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        hr {
+            border: none;
+            border-top: 2px solid #e0e0e0;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+    
+    <h1>Lecture 15: Conservation Laws and De Rham Complexes</h1>
+    
+    <p><strong>Reference:</strong> Lecture 15 - Mixed Finite Element Methods for Conservation Laws</p>
+    
+    <p><strong>Topics Covered:</strong></p>
+    <ul>
+        <li>Saddle-point problems and inf-sup stability review</li>
+        <li>Conservation laws: divergence and curl forms</li>
+        <li>Discrete de Rham complexes (Whitney forms)</li>
+        <li>Local and global conservation properties</li>
+        <li>Monotonicity conditions for nonlinear problems</li>
+    </ul>
+    
+    <hr>
+    
+    <h2>0. Overview</h2>
+    
+    <p>This lecture marks an important transition in our course: from studying abstract saddle-point problems to understanding their application in <strong>conservation laws</strong>. Having established the theory of mixed finite element methods for Stokes flow in the previous lecture, we now leverage that framework to design numerical schemes that preserve fundamental physical conservation principles.</p>
+    
+    <p>The key insight is recognizing that many important PDEs can be written in the form $\nabla \cdot F = f$ (mass/energy conservation) or $\nabla \times F = f$ (circulation/vorticity conservation), where the flux $F$ may involve both linear and nonlinear terms. For these problems, simply choosing stable finite element spaces is not enough—we need spaces that form a <strong>de Rham complex</strong>, ensuring that discrete versions of identities like $\nabla \times \nabla = 0$ and $\nabla \cdot (\nabla \times) = 0$ hold exactly.</p>
+    
+    <p>We begin by revisiting the inf-sup stability proof from the previous lecture, then show how to construct compatible finite element spaces for conservation laws in 1D. The construction generalizes to higher dimensions through Whitney forms, building the classical sequence $W^0 \xrightarrow{\text{grad}} W^1 \xrightarrow{\text{curl}} W^2$. Along the way, we prove that these spaces satisfy both <strong>global conservation</strong> (total flux through boundaries equals total sources) and <strong>local conservation</strong> (element-wise balance of fluxes).</p>
+    
+    <p>Finally, we introduce <strong>monotonicity conditions</strong> for nonlinear terms, which guarantee stability even when $\varepsilon N(u)$ is added to linear operators. This sets the stage for studying nonlinear conservation laws in physics and machine learning applications.</p>
+    
+    <hr>
+    
+    <h2>1. Review: Saddle-Point Problems and Inf-Sup Stability</h2>
+    
+    <p>Last time we introduced <strong>mixed FEM spaces</strong> for Stokes flow:</p>
+    
+    $$\begin{aligned}
+    \nabla^{2} u - \nabla p &= f \\
+    \nabla \cdot u &= 0
+    \end{aligned}$$
+    
+    <p>This is an example of the general class of <strong>saddle-point problems</strong>:</p>
+    
+    $$\begin{aligned}
+    a(u, v) + b(p, v) &= L_1(v) \quad \forall (v, q) \in V_h \otimes M_h \\
+    b(q, u) &= L_2(q)
+    \end{aligned}$$
+    
+    <h3>1.1 Uniqueness Proof Review</h3>
+    
+    <p><strong>Important Note:</strong> Assuming $a$ satisfies the <strong>Lax-Milgram conditions</strong>, let's repeat the uniqueness proof from last lecture.</p>
+    
+    <p><strong>Step 1:</strong> Set $L_1 = L_2 = 0$, $q = p$, $v = u$:</p>
+    
+    $$\begin{gathered}
+    a(u, u) + b(p, u) = 0 \\
+    b(p, u) = 0
+    \end{gathered}$$
+    
+    <p><strong>Step 2:</strong> Apply coercivity of $a$:</p>
+    
+    $$\alpha \|u\|_V \leq a(u, u) = 0 \quad \Rightarrow \quad u = 0$$
+    
+    <p><strong>Step 3:</strong> Equation 1 reduces to:</p>
+    
+    $$b(p, v) = 0$$
+    
+    <p><strong>Step 4:</strong> Apply the <strong>inf-sup compatibility condition</strong>. If $V_h, M_h$ satisfy: for all $p \in M_h$, there exists $\tilde{v} \in V_h$ such that</p>
+    
+    $$\frac{b(p, \tilde{v})}{\|\tilde{v}\|_V} \geq \beta \|p\|_M$$
+    
+    <p>Then:</p>
+    
+    $$\|p\|_M \leq 0 \quad \Rightarrow \quad p = 0$$
+    
+    <p><strong>Critical observation:</strong> This proof works whenever we can find compatible spaces $V_h$ and $M_h$ that satisfy the inf-sup condition. The rest of this lecture develops such spaces for conservation laws.</p>
+    
+    <hr>
+    
+    <h2>2. From Saddle-Point Problems to Conservation Laws</h2>
+    
+    <h3>2.1 Motivation</h3>
+    
+    <p>So far we've learned models like:</p>
+    
+    $$A u + \varepsilon N(u) = f$$
+    
+    <p>Now we have the equipment to consider <strong>conservation laws</strong>:</p>
+    
+    $$\begin{aligned}
+    \nabla \cdot F &= f \\
+    F &= L(u) + \varepsilon N(u)
+    \end{aligned}$$
+    
+    <p>These satisfy, for $f = 0$:</p>
+    
+    $$0 = \int_{\Omega} f \, dx = \int_{\Omega} \nabla \cdot F \, dx = \int_{\partial \Omega} F \cdot dA$$
+    
+    <p><strong>Interpretation:</strong> The total flux through the boundary equals the total sources/sinks in the domain.</p>
+    
+    <p>Similarly, one can define <strong>circulation conservation</strong>:</p>
+    
+    $$\begin{aligned}
+    \nabla \times F &= f \\
+    F &= L(u) + \varepsilon N(u)
+    \end{aligned}$$
+    
+    <p>For conservation of circulations (e.g., magnetic fields, vorticity):</p>
+    
+    $$0 = \int f \, dA = \int \nabla \times F \cdot dA = \oint F \cdot dl$$
+    
+    <h3>2.2 Design Philosophy</h3>
+    
+    <p><strong>Pedagogical note:</strong> The key challenge is designing finite element spaces that preserve these conservation properties discretely. We'll start with the simplest case (1D, linear) to build intuition, then generalize.</p>
+    
+    <hr>
+    
+    <h2>3. One-Dimensional Conservation Laws</h2>
+    
+    <h3>3.1 Saddle-Point Formulation</h3>
+    
+    <p>Let's start by designing a good space in the linear setting ($\varepsilon = 0$) in 1D:</p>
+    
+    $$\begin{aligned}
+    F' &= f \\
+    F &= L(u)
+    \end{aligned}$$
+    
+    <p><strong>Step 1:</strong> The first equation gives:</p>
+    
+    $$\begin{aligned}
+    (q, F') &= (q, f) - (q', F) = (f, q)
+    \end{aligned}$$
+    
+    <p>This suggests the form:</p>
+    
+    $$b(q, F) = L_2(q)$$
+    
+    <p><strong>Step 2:</strong> To obtain a saddle-point problem (and automatic stability), choose:</p>
+    
+    $$L(u) = u'$$
+    
+    $$\begin{aligned}
+    (F, v) + (u', v) &= 0 \\
+    a(F, v) + b(u, v) &= 0
+    \end{aligned}$$
+    
+    <p>with $a(u, v) = (u, v)$.</p>
+    
+    <p><strong>Important Notes:</strong></p>
+    <ul>
+        <li>Can easily check $a$ satisfies Lax-Milgram (just the $L^2$ inner product)</li>
+        <li>Just need to choose an inf-sup stable pair $V_h, M_h$</li>
+    </ul>
+    
+    <h3>3.2 Constructing Inf-Sup Stable Spaces</h3>
+    
+    <p>Let:</p>
+    <ul>
+        <li>$M_h = \{f \in L^2(\Omega) \mid f|_e = \text{const}\}$ (piecewise constants)</li>
+        <li>$V_h = $ piecewise linears $\subseteq H_0^1$</li>
+    </ul>
+    
+    <p><strong>Construction:</strong> Given a $p \in M_h$, we can build $\tilde{v}$ such that $\tilde{v}' = p$.</p>
+    
+    <p><strong>Step 1:</strong> Set $\tilde{v}_0 = 0$</p>
+    
+    $$\tilde{v}_j = \sum_{k=0}^{j-1} p_k h$$
+    
+    <p><strong>Step 2:</strong> Then:</p>
+    
+    $$\int_{e_j} \nabla \tilde{v} \, dx = \tilde{v}_{j+1} - \tilde{v}_j = p_j h$$
+    
+    <h3>3.3 Verification of Inf-Sup Condition</h3>
+    
+    <p>Note that:</p>
+    
+    $$\begin{aligned}
+    b(p, \tilde{v}) &= \int p \tilde{v}' \\
+    &= \sum_j \hat{p}_j \int_{[x_j, x_{j+1}]} \tilde{v}' \\
+    &= \sum_j \hat{p}_j (\tilde{v}_{j+1} - \tilde{v}_j) \\
+    &= \sum_j \hat{p}_j^2 h \\
+    &= \|p\|_{L^2}^2
+    \end{aligned}$$
+    
+    <p>And:</p>
+    
+    $$\begin{aligned}
+    |v|_{H^1}^2 &= \sum_{e_j} \int_{x_j}^{x_{j+1}} |\nabla v|^2 \, dx \\
+    &= \sum_{e_j} \int_{x_j}^{x_{j+1}} p^2 \, dx \\
+    &= \|p\|_{L^2}^2
+    \end{aligned}$$
+    
+    <p>So:</p>
+    
+    $$\frac{b(p, \tilde{v})}{|v|_{H^1}} = \frac{\|p\|_{L^2}^2}{\|p\|_{L^2}} = \|p\|_{L^2}$$
+    
+    <p><strong>This proves inf-sup stability with $\beta = 1$.</strong></p>
+    
+    <h3>3.4 Key Observations</h3>
+    
+    <p>Now that we've worked out a pair of inf-sup stable spaces, notice:</p>
+    
+    <ol>
+        <li>For any bigger choice of $V_h \subseteq V_h^{\text{big}}$, $\tilde{v} \in V_h^{\text{big}}$, and so $M_h$ and $V_h^{\text{big}}$ are also inf-sup compatible</li>
+        
+        <li><strong>The key property</strong> was that $V_h$ is chosen large enough that $\tilde{v}' = p$, or the derivative operator is onto (surjective):</li>
+    </ol>
+    
+    $$\frac{d}{dx} V_h \supseteq M_h$$
+    
+    <p><strong>Critical observation:</strong> This containment condition is the key to designing stable mixed methods!</p>
+    
+    <hr>
+    
+    <h2>4. Higher-Dimensional Conservation Laws</h2>
+    
+    <h3>4.1 General Principle</h3>
+    
+    <p>In higher dimensions, for $D = \text{div/grad/curl}$:</p>
+    
+    $$(D^* f, g) = (f, D g) \quad \text{where } D^* = \text{grad/div/curl}$$
+    
+    <p>The <strong>saddle-point problem</strong>:</p>
+    
+    $$\begin{aligned}
+    (F, v) + (Du, v) &= 0 \\
+    (q, D^* F) &= (f, q)
+    \end{aligned}$$
+    
+    <p>is <strong>inf-sup stable</strong> if:</p>
+    
+    $$D V_h \supseteq M_h$$
+    
+    <p><strong>This generalizes our 1D observation to arbitrary differential operators!</strong></p>
+    
+    <h3>4.2 Discrete Conservation Properties</h3>
+    
+    <p>Now we have FEM spaces nailed down. What about <strong>discrete conservation properties</strong>?</p>
+    
+    <p>Consider higher dimensions:</p>
+    
+    $$-(\nabla q, F) + \langle q, F \rangle_{\text{BC}} = (f, q)$$
+    
+    <h4>Global Conservation</h4>
+    
+    <p>Let $q = 1$:</p>
+    
+    $$\begin{aligned}
+    -(\nabla q, F) + \langle q, F \rangle &= (f, q) \\
+    \int_{\partial \Omega} F \cdot dA &= \int_{\Omega} f \, dx
+    \end{aligned}$$
+    
+    <p><strong>Interpretation:</strong></p>
+    
+    $$\text{flux in/out} = \text{source-sinks}$$
+    
+    <h4>Local Conservation</h4>
+    
+    <p>Let $V_h = \text{span}(\phi_i)$ and choose $q = \phi_i$:</p>
+    
+    $$\begin{aligned}
+    &-\int \nabla \phi_i \cdot F \, dx = (f, \phi_i) \\
+    &= -\sum_j \int \phi_j \nabla \phi_i \cdot F \, dx \\
+    &= \sum_j \int \underbrace{(\phi_j \nabla \phi_i - \phi_i \nabla \phi_j)}_{\psi_{ij} = -\psi_{ji}} \cdot F \, dx
+    \end{aligned}$$
+    
+    <p><strong>Step 1:</strong> Assume $f = 0$ and $F \cdot dA = 0$ on the boundary.</p>
+    
+    <p><strong>Step 2:</strong> Note that:</p>
+    
+    $$\sum_i \phi_i = 1 \quad \Rightarrow \quad \sum_j \nabla \phi_j = 0$$
+    
+    <p><strong>Step 3:</strong> Therefore:</p>
+    
+    $$\sum_j \phi_i \nabla \phi_j = 0$$
+    
+    <p><strong>Step 4:</strong> If $f = 0$:</p>
+    
+    $$\sum_j \underbrace{\int \psi_{ij} \cdot F \, dx}_{\substack{\text{equal and opposite} \\ \text{fluxes}}} = 0$$
+    
+    <p><strong>Interpretation:</strong> The anti-symmetry of $\psi_{ij}$ ensures that fluxes between adjacent elements cancel perfectly.</p>
+    
+    <hr>
+    
+    <h2>5. Whitney Forms and the De Rham Complex</h2>
+    
+    <h3>5.1 Constructing Whitney 1-Forms</h3>
+    
+    <p>Denote:</p>
+    <ul>
+        <li>$W^0 = \text{span}(\phi_i)$ (vertex-based functions)</li>
+        <li>$W^1 = \text{span}(\psi_{ij})$ (edge-based functions)</li>
+    </ul>
+    
+    <p>where:</p>
+    
+    $$\psi_{ij} = \phi_j \nabla \phi_i - \phi_i \nabla \phi_j$$
+    
+    <div class="theorem-box">
+        <p><strong>Theorem:</strong> $\text{grad}(W^0) \subseteq W^1$</p>
+        
+        <p><em>Proof:</em> Let $f \in W^0$:</p>
+        
+        $$\begin{aligned}
+        f &= \sum_i \hat{f}_i \phi_i(x) \\
+        \nabla f &= \sum_i \hat{f}_i \nabla \phi_i \\
+        &= \sum_{i,j} \hat{f}_i (\phi_j \nabla \phi_i - \phi_i \nabla \phi_j) \\
+        &= \sum_{i,j} \hat{f}_i \psi_{ij} \in W^1
+        \end{aligned}$$
+    </div>
+    
+    <h3>5.2 Constructing Whitney 2-Forms</h3>
+    
+    <p>Motivated by the construction, we'll "play by ear" and make a space for curls.</p>
+    
+    <p><strong>Step 1:</strong> Apply integration by parts:</p>
+    
+    $$(\psi_{ij}, \nabla \times F) = (\nabla \times \psi_{ij}, F)$$
+    
+    <p><strong>Step 2:</strong> Compute:</p>
+    
+    $$\begin{aligned}
+    \nabla \times \psi_{ij} &= \nabla \times (\phi_j \nabla \phi_i - \phi_i \nabla \phi_j) \\
+    &= \nabla \phi_j \times \nabla \phi_i
+    \end{aligned}$$
+    
+    <p>(using $\nabla \times (f \vec{G}) = \nabla f \times \vec{G} + f \nabla \times \vec{G}$ and $\nabla \times \nabla = 0$)</p>
+    
+    <p><strong>Step 3:</strong> Introduce partition of unity:</p>
+    
+    $$\sum_k \phi_k = 1$$
+    
+    <p><strong>Step 4:</strong> Therefore:</p>
+    
+    $$\begin{aligned}
+    \nabla \phi_j \times \nabla \phi_i &= \sum_k \phi_k (\nabla \phi_j \times \nabla \phi_i) \\
+    &= \sum_k (\phi_k \nabla \phi_j \times \nabla \phi_i + \phi_i \nabla \phi_k \times \nabla \phi_j + \phi_j \nabla \phi_i \times \nabla \phi_k)
+    \end{aligned}$$
+    
+    <p>Define:</p>
+    
+    $$\psi_{ijk}^2 = \phi_k \nabla \phi_j \times \nabla \phi_i + \phi_i \nabla \phi_k \times \nabla \phi_j + \phi_j \nabla \phi_i \times \nabla \phi_k$$
+    
+    <p><strong>Note:</strong> Anti-symmetric with respect to index permutations.</p>
+    
+    <p>Let $W^2 = \text{span}(\psi_{ijk}^2)$ (face-based functions).</p>
+    
+    <div class="theorem-box">
+        <p><strong>Theorem:</strong> $\text{curl}(W^1) \subseteq W^2$</p>
+    </div>
+    
+    <h3>5.3 The Complete De Rham Complex</h3>
+    
+    <p>We can now build a <strong>de Rham complex</strong>:</p>
+    
+    $$W^0 \xrightarrow{\text{grad}} W^1 \xrightarrow{\text{curl}} W^2$$
+    
+    <p>Preserving exactly $\text{curl} \circ \text{grad} = 0$.</p>
+    
+    <p>By duality (integrating by parts $(\nabla f, g) = -(f, \nabla \cdot g)$):</p>
+    
+    $$W^0 \xleftarrow{-\text{div}} W^1 \xleftarrow{\text{curl}} W^2$$
+    
+    <p>This gives $\text{div} \circ \text{curl} = 0$ exactly.</p>
+    
+    <p><strong>Pedagogical note:</strong> These spaces, known as <strong>Whitney forms</strong>, are the foundation of finite element exterior calculus. They ensure that topological identities in differential geometry are preserved at the discrete level—crucial for electromagnetics, fluid dynamics, and geometric PDEs.</p>
+    
+    <hr>
+    
+    <h2>6. Nonlinear Conservation Laws</h2>
+    
+    <h3>6.1 Monotonicity Conditions</h3>
+    
+    <p>Return to nonlinearity:</p>
+    
+    $$Lu + \varepsilon N(u) = f$$
+    
+    $$a(u, v) + \varepsilon (N(u), v) = (f, v)$$
+    
+    <p>We introduce a new condition:</p>
+    
+    <div class="definition">
+        <p><strong>Monotonicity:</strong></p>
+        
+        $$(N(u), u) \geq \alpha_N \|u\|_V^2$$
+    </div>
+    
+    <h3>6.2 Stability Analysis</h3>
+    
+    <p>To prove stability:</p>
+    
+    $$\begin{aligned}
+    \alpha \|u\|_V^2 - \varepsilon \alpha_N \|u\|_V^2 &\leq a(u, u) + \varepsilon (N(u), u) \\
+    &= (f, u) \\
+    &\leq C \|f\|_V \|u\|_V
+    \end{aligned}$$
+    
+    <p>Therefore:</p>
+    
+    $$\|u\|_V \leq \frac{C}{\alpha - \varepsilon \alpha_N} \|f\|_V$$
+    
+    <p><strong>Critical observation:</strong> Provided $\varepsilon < \alpha / \alpha_N$, the solution is bounded and the problem is well-posed. The monotonicity of $N$ provides a stabilizing effect that prevents blow-up.</p>
+    
+    <hr>
+    
+    <h2>Summary</h2>
+    
+    <div class="summary-box">
+        <p>This lecture covered:</p>
+        <ol>
+            <li><strong>Review of inf-sup stability</strong> for saddle-point problems</li>
+            <li><strong>Conservation laws</strong> in divergence and curl form</li>
+            <li><strong>One-dimensional construction</strong> of inf-sup stable spaces via derivative surjectivity</li>
+            <li><strong>Higher-dimensional generalization</strong> using Whitney forms</li>
+            <li><strong>Global and local conservation</strong> properties at the discrete level</li>
+            <li><strong>De Rham complex</strong> construction: $W^0 \xrightarrow{\text{grad}} W^1 \xrightarrow{\text{curl}} W^2$</li>
+            <li><strong>Monotonicity conditions</strong> for nonlinear stability</li>
+        </ol>
+        
+        <p><strong>Key Takeaway:</strong> The discrete de Rham complex ensures that fundamental identities like $\nabla \times \nabla = 0$ and $\nabla \cdot (\nabla \times) = 0$ hold exactly at the discrete level. This is achieved by choosing finite element spaces that satisfy $D V_h \supseteq M_h$ for the appropriate differential operator $D$. Such structure-preserving discretizations are essential for long-time stability in conservation law simulations and maintain the geometric properties of the continuous problem.</p>
+    </div>
+    
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>

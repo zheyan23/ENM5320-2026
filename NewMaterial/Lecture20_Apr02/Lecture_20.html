@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 20: Denoising Diffusion Probabilistic Models</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        onload="renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false}
+            ],
+            throwOnError: false
+        });"></script>
+    <style>
+        :root {
+            --penn-red: #990000;
+            --penn-blue: #01256E;
+            --penn-light-blue: #82AFD3;
+            --background: #FEFEFE;
+            --text-primary: #1A1A1A;
+            --text-secondary: #4A4A4A;
+            --border-color: #E0E0E0;
+            --code-bg: #F5F5F5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.7;
+            color: var(--text-primary);
+            background-color: var(--background);
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--penn-blue) 0%, var(--penn-red) 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.95;
+            font-weight: 300;
+        }
+
+        h2 {
+            color: var(--penn-red);
+            margin-top: 40px;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--penn-light-blue);
+        }
+
+        h3 {
+            color: var(--penn-blue);
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+
+        h4 {
+            color: var(--penn-blue);
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        .katex-display {
+            margin: 25px 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .katex {
+            font-size: 1.1em;
+        }
+
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        strong {
+            color: var(--penn-red);
+            font-weight: 600;
+        }
+
+        em {
+            color: var(--penn-blue);
+            font-style: italic;
+        }
+
+        code {
+            background-color: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .info-box {
+            background-color: #E8F4F8;
+            border-left: 5px solid var(--penn-light-blue);
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+        }
+
+        .warning-box {
+            background-color: #FFF4E6;
+            border-left: 5px solid var(--penn-red);
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+        }
+
+        .theorem-box {
+            background-color: #F0F4FF;
+            border: 2px solid var(--penn-blue);
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+        }
+
+        .proof-box {
+            background-color: #F8F8F8;
+            border-left: 3px solid var(--text-secondary);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 3px;
+        }
+
+        hr {
+            border: none;
+            border-top: 2px solid var(--border-color);
+            margin: 40px 0;
+        }
+
+        .topics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .topic-item {
+            background-color: var(--code-bg);
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid var(--penn-red);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            header {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+
+            h3 {
+                font-size: 1.2em;
+            }
+        }
+
+        @media print {
+            body {
+                max-width: 100%;
+            }
+
+            header {
+                background: var(--penn-blue);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Lecture 20: Denoising Diffusion Probabilistic Models</h1>
+        <div class="subtitle">ENM 5320 – Spring 2026</div>
+    </header>
+
+    <div class="info-box">
+        <strong>Reference:</strong> Lecture 20 - Diffusion Models and Physical Priors
+    </div>
+
+    <section>
+        <h2>Topics Covered</h2>
+        <div class="topics-grid">
+            <div class="topic-item">ELBO review and computational tractability</div>
+            <div class="topic-item">Denoising diffusion forward process</div>
+            <div class="topic-item">Gaussian noise addition and limiting behavior</div>
+            <div class="topic-item">Reverse process as learned denoising</div>
+            <div class="topic-item">Justification of Gaussian reverse transitions</div>
+            <div class="topic-item">Practical implementation and extensions</div>
+        </div>
+    </section>
+
+    <hr>
+
+    <section>
+        <h2>0. Overview</h2>
+        <p>This final lecture brings together probabilistic modeling, variational inference, and physics-inspired design principles to understand <strong>denoising diffusion probabilistic models (DDPMs)</strong>—one of the most successful generative modeling frameworks in modern machine learning. Having developed the ELBO framework in the previous lecture, we now see how a carefully designed <strong>forward diffusion process</strong> leads to a tractable and powerful generative model.</p>
+
+        <p>The key insight is deceptively simple: instead of learning a direct mapping from data $x_0$ to a latent code $z$ (as in VAEs), we gradually <strong>add noise</strong> over many timesteps until the data becomes pure Gaussian noise. By learning to <strong>reverse this process</strong>—denoising one step at a time—we obtain a generative model that can sample from the data distribution by starting with Gaussian noise and iteratively removing it.</p>
+
+        <p>What makes this approach work mathematically is that (1) the forward process has closed-form Gaussians at each step, (2) the reverse process can be approximated by Gaussians for small noise levels, and (3) the ELBO decomposes into a sum of KL-divergences between these Gaussians, giving tractable training objectives. The result is a model that combines the expressiveness of neural networks with the stability of physical diffusion processes.</p>
+
+        <p>We begin by reviewing the ELBO and design criteria, develop the forward diffusion process with proofs of limiting behavior, construct the reverse process, and conclude with practical considerations and research directions. This lecture demonstrates how physical intuition (diffusion equations) can inspire machine learning architectures that are both principled and effective.</p>
+    </section>
+
+    <section>
+        <h2>1. Review: ELBO and Design Goals</h2>
+
+        <h3>1.1 ELBO Recap</h3>
+        <p>Recall the <strong>Evidence Lower Bound</strong> from last time:</p>
+
+        $$
+        \mathcal{L} = -\mathbb{E}_{z \sim q}[\log p(x | z)] - \text{KL}(q(z | x) \| p(z))
+        $$
+
+        <p>We discussed Kingma & Welling's <strong>"vanilla" VAE</strong> with:</p>
+
+        <ol>
+            <li><strong>Single-sample Monte Carlo estimation:</strong>
+                $$
+                \mathbb{E}_{z \sim q}[\log p(x | z)] \approx \log p(x_d | z_d)
+                $$
+            </li>
+            <li><strong>Standard Gaussian prior:</strong>
+                $$
+                p(z) = \mathcal{N}(\mu = 0, \Sigma = I)
+                $$
+            </li>
+        </ol>
+
+        <p>This allowed <strong>generative modeling</strong>:</p>
+        <ol>
+            <li>Sample $z \sim \mathcal{N}(0, I)$</li>
+            <li>Decode using $p(x | z)$</li>
+        </ol>
+
+        <h3>1.2 Design Goals</h3>
+        <p>There is a <strong>craft to designing architectures</strong> around different choices of:</p>
+        <ul>
+            <li>Embeddings $z$</li>
+            <li>Priors $p(z)$</li>
+        </ul>
+
+        <div class="info-box">
+            <strong>GOAL: Computationally tractable</strong>
+        </div>
+
+        <p><strong>Two examples:</strong></p>
+        <ol>
+            <li><strong>Denoising Diffusion</strong> ← ELBO with Gaussians all the way!</li>
+            <li><strong>Physical Priors</strong> ← Problem-specific structure</li>
+        </ol>
+
+        <div class="warning-box">
+            <strong>Pedagogical note:</strong> The key is choosing priors and transition distributions that are both expressive and have closed-form ELBO terms.
+        </div>
+    </section>
+
+    <section>
+        <h2>2. Denoising Diffusion</h2>
+
+        <h3>2.1 Core Idea</h3>
+        <p><strong>Reference:</strong> Sohl-Dickstein et al., "Deep Unsupervised Learning using Nonequilibrium Thermodynamics"</p>
+
+        <p><strong>Idea:</strong> Don't jump from $x$ to $z$ in one step. Instead, <strong>decode in increments</strong>.</p>
+
+        <p><strong>Vanilla VAE:</strong></p>
+        $$
+        x \to z \to x
+        $$
+
+        <p><strong>Diffusion model:</strong></p>
+        $$
+        x^0 \to x^1 \to x^2 \to \cdots \to x^T
+        $$
+
+        <p>where $x^T \approx \mathcal{N}(0, I)$ (pure noise).</p>
+
+        <h3>2.2 Forward Process</h3>
+        <div class="theorem-box">
+            <strong>Definition:</strong> The <strong>forward diffusion process</strong> adds small Gaussian noise at each step:
+
+            $$
+            q(x^t | x^{t-1}) = \mathcal{N}(x^t; \sqrt{1 - \beta_t} x^{t-1}, \beta_t I)
+            $$
+        </div>
+
+        <p><strong>Reparameterization:</strong></p>
+
+        $$
+        x^t = \sqrt{1 - \beta_t} x^{t-1} + \sqrt{\beta_t} \varepsilon_t, \quad \varepsilon_t \sim \mathcal{N}(0, I)
+        $$
+
+        <p>where $0 < \beta_t \ll 1$ is a small <strong>noise schedule</strong>.</p>
+
+        <h3>2.3 Multi-Step Composition</h3>
+        <div class="theorem-box">
+            <strong>Claim:</strong> We can compute $q(x^t | x^0)$ directly without iterating through intermediate steps.
+        </div>
+
+        <div class="proof-box">
+            <strong>Step 1:</strong> Consider two steps:
+
+            $$
+            \begin{aligned}
+            x^t &= \sqrt{1 - \beta_t} x^{t-1} + \sqrt{\beta_t} \varepsilon_t \\
+            x^{t+1} &= \underbrace{\sqrt{1 - \beta_{t+1}} \sqrt{1 - \beta_t}}_{\text{products}} x^{t-1} + \underbrace{\sqrt{\beta_{t+1} \beta_t} \varepsilon_t + \sqrt{\beta_{t+1}} \varepsilon_{t+1}}_{\text{additive Gaussian noise}}
+            \end{aligned}
+            $$
+
+            <strong>Step 2:</strong> Define:
+
+            $$
+            \begin{aligned}
+            \alpha_s &= 1 - \beta_s \\
+            \bar{\alpha}_t &= \prod_{s=1}^t \alpha_s
+            \end{aligned}
+            $$
+
+            <strong>Step 3:</strong> By induction:
+
+            $$
+            x^t = \sqrt{\bar{\alpha}_t} x^0 + \sum_{s=1}^t \sqrt{\bar{\alpha}_{s-1} \beta_s} \varepsilon_s
+            $$
+
+            <strong>Step 4:</strong> For Gaussians, <strong>variance of sum is sum of variances</strong>:
+
+            $$
+            x^t \sim \mathcal{N}\left( \sqrt{\bar{\alpha}_t} x^0, \sum_{s=1}^t \bar{\alpha}_{s-1} \beta_s I \right)
+            $$
+        </div>
+
+        <h3>2.4 Variance Simplification</h3>
+        <div class="theorem-box">
+            <strong>Lemma:</strong>
+
+            $$
+            \sum_{s=1}^t \bar{\alpha}_{s-1} \beta_s = 1 - \bar{\alpha}_t
+            $$
+        </div>
+
+        <div class="proof-box">
+            <strong>Proof:</strong>
+
+            $$
+            \begin{aligned}
+            \bar{\alpha}_s &= \bar{\alpha}_{s-1} \alpha_s = \bar{\alpha}_{s-1}(1 - \beta_s) \\
+            &\Rightarrow \bar{\alpha}_{s-1} \beta_s = \bar{\alpha}_{s-1} - \bar{\alpha}_s
+            \end{aligned}
+            $$
+
+            So:
+
+            $$
+            \sum_{s=1}^t \bar{\alpha}_{s-1} \beta_s = \sum_{s=1}^t (\bar{\alpha}_{s-1} - \bar{\alpha}_s) = \bar{\alpha}_0 - \bar{\alpha}_t = 1 - \bar{\alpha}_t
+            $$
+        </div>
+
+        <div class="info-box">
+            <strong>Result:</strong>
+
+            $$
+            q(x^t | x^0) = \mathcal{N}(\sqrt{\bar{\alpha}_t} x^0, (1 - \bar{\alpha}_t) I)
+            $$
+        </div>
+
+        <h3>2.5 Limiting Behavior</h3>
+        <div class="theorem-box">
+            <strong>Claim:</strong> As $t \to \infty$, $x^t \to \mathcal{N}(0, I)$ (pure noise).
+        </div>
+
+        <div class="proof-box">
+            <strong>Proof:</strong>
+
+            <p>Let $0 < \beta_{\min} \leq \beta_s$ for all $s$.</p>
+
+            $$
+            \begin{aligned}
+            \lim_{t \to \infty} |\bar{\alpha}_t| &= \lim_{t \to \infty} \left| \prod_{s=1}^t (1 - \beta_s) \right| \\
+            &\leq \lim_{t \to \infty} \left| \prod_{s=1}^t (1 - \beta_{\min}) \right| \\
+            &= \lim_{t \to \infty} (1 - \beta_{\min})^t \\
+            &= 0
+            \end{aligned}
+            $$
+
+            <p>Therefore:</p>
+
+            $$
+            \lim_{t \to \infty} \mathcal{N}(\sqrt{\bar{\alpha}_t} x^0, (1 - \bar{\alpha}_t) I) = \mathcal{N}(0, I)
+            $$
+        </div>
+
+        <div class="warning-box">
+            <strong>Critical observation:</strong> The forward process <strong>destroys all information</strong> about $x^0$ in the limit, regardless of the initial data distribution!
+        </div>
+    </section>
+
+    <section>
+        <h2>3. Reverse Process</h2>
+
+        <h3>3.1 Forward and Reverse Ingredients</h3>
+        <p><strong>Ingredient 1 (Forward):</strong></p>
+
+        $$
+        q(x^0, \ldots, x^T) = q(x^0) \prod_{t=1}^T q(x^t | x^{t-1})
+        $$
+
+        <p>where each $q(x^t | x^{t-1})$ is Gaussian.</p>
+
+        <p><strong>Ingredient 2 (Reverse):</strong></p>
+
+        $$
+        p(x^0, \ldots, x^T) = p(x^T) \prod_{t=1}^T p(x^{t-1} | x^t)
+        $$
+
+        <div class="info-box">
+            <strong>Note:</strong> We're going <strong>backward in time</strong> now!
+        </div>
+
+        <p><strong>Prior distribution:</strong> $p(x^T) = \mathcal{N}(0, I)$</p>
+
+        <h3>3.2 Gaussian Reverse Transitions</h3>
+        <div class="theorem-box">
+            <strong>Claim:</strong> For small $\beta_t$, $p(x^{t-1} | x^t)$ is approximately Gaussian.
+        </div>
+
+        <p><strong>Parameterization:</strong></p>
+
+        $$
+        p(x^{t-1} | x^t) = \mathcal{N}(\mu = f(x^t; \theta_f), \Sigma = g(x^t; \theta_g))
+        $$
+
+        <p>where $f$ and $g$ are neural networks.</p>
+
+        <div class="info-box">
+            <strong>We will prove this as justification for the parameterization.</strong>
+        </div>
+
+        <h3>3.3 Justification via Bayes' Rule</h3>
+        <div class="proof-box">
+            <strong>Step 1:</strong> By Bayes' theorem:
+
+            $$
+            q(x^{t-1} | x^t, x^0) = \frac{q(x^t | x^{t-1}, x^0) q(x^{t-1} | x^0)}{q(x^t | x^0)}
+            $$
+
+            <strong>Step 2:</strong> From the forward process:
+
+            $$
+            q(x^t | x^{t-1}) = \mathcal{N}(\sqrt{1 - \beta_t} x^{t-1}, \beta_t I)
+            $$
+
+            <strong>Step 3:</strong> And we derived:
+
+            $$
+            q(x^{t-1} | x^0) = \mathcal{N}(\sqrt{\bar{\alpha}_{t-1}} x^0, (1 - \bar{\alpha}_{t-1}) I)
+            $$
+
+            <strong>Step 4:</strong> <strong>Product of Gaussians is an unnormalized Gaussian</strong>. For some $\mu^*, \Sigma^*, C$:
+
+            $$
+            q(x^t | x^{t-1}) q(x^{t-1} | x^0) \sim C \mathcal{N}(\mu^*, \Sigma^*)
+            $$
+
+            <strong>Step 5:</strong> Skipping algebra details:
+
+            $$
+            q(x^{t-1} | x^t, x^0) = \mathcal{N}(\mu_t^*(x^0, x^t), \beta_t^* I)
+            $$
+
+            where:
+
+            $$
+            \begin{aligned}
+            \mu_t^* &= \frac{\sqrt{\bar{\alpha}_{t-1}} \beta_t}{1 - \bar{\alpha}_t} x^0 + \frac{\sqrt{\alpha_t}(1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t} x^t \\
+            \beta_t^* &= \frac{(1 - \bar{\alpha}_{t-1}) \beta_t}{1 - \bar{\alpha}_t}
+            \end{aligned}
+            $$
+        </div>
+
+        <h3>3.4 Removing Conditioning on $x^0$</h3>
+        <p><strong>Question:</strong> How do we approximate $q(x^{t-1} | x^t)$ without conditioning on $x^0$?</p>
+
+        <p><strong>Use the laws of total expectation and variance:</strong></p>
+
+        $$
+        \begin{aligned}
+        \mathbb{E}[X] &= \mathbb{E}[\mathbb{E}[X | Y]] \\
+        \text{Var}[X] &= \mathbb{E}[\text{Var}[X | Y]] + \text{Var}[\mathbb{E}[X | Y]]
+        \end{aligned}
+        $$
+
+        <p><strong>On the mean:</strong></p>
+
+        $$
+        \begin{aligned}
+        \mathbb{E}[x^{t-1} | x^t] &= \mathbb{E}[\mathbb{E}[x^{t-1} | x^t, x^0]] \\
+        &= \mathbb{E}[\mu_t^*] \sim O(\beta_t^2)
+        \end{aligned}
+        $$
+
+        <p><strong>On the variance:</strong></p>
+
+        $$
+        \begin{aligned}
+        \text{Var}[x^{t-1} | x^t] &= \mathbb{E}[\text{Var}(x^{t-1} | x^t, x^0)] + \text{Var}[\mathbb{E}[x^{t-1} | x^t, x^0]] \\
+        &= \underbrace{\mathbb{E}[\beta_t^* I]}_{O(\beta_t^2)} + \underbrace{\text{Var}[\mu_t^*]}_{O(\beta_t)}
+        \end{aligned}
+        $$
+
+        <div class="warning-box">
+            <strong>Critical observation:</strong> For small $\beta_t$, the conditional mean and variance are approximately constant, justifying the Gaussian approximation!
+        </div>
+    </section>
+
+    <section>
+        <h2>4. The Diffusion ELBO</h2>
+
+        <h3>4.1 ELBO Decomposition</h3>
+        <p><strong>Ingredient 3 (ELBO):</strong></p>
+
+        $$
+        \begin{aligned}
+        \mathcal{L} = &\mathbb{E}_{q(x^T | x^0)}[\log p(x^0 | x^T)] \\
+        &- \sum_{t=2}^T \mathbb{E}_{q(x^t | x^0)}\left[ \text{KL}(q(x^{t-1} | x^t, x^0) \| p(x^{t-1} | x^t)) \right]
+        \end{aligned}
+        $$
+
+        <div class="info-box">
+            <strong>Interpretation:</strong>
+            <ul>
+                <li><strong>Learn to denoise single diffusion steps</strong> (minimize KL at each timestep)</li>
+                <li><strong>Generate by sampling a Gaussian and denoising</strong> (reverse the forward process)</li>
+            </ul>
+        </div>
+
+        <h3>4.2 Key Advantages</h3>
+        <p><strong>Some takeaways:</strong></p>
+
+        <p><strong>Designed an encoding which:</strong></p>
+        <ul>
+            <li>Required <strong>no learning</strong> (forward process is fixed)</li>
+            <li>Took us to a <strong>latent Gaussian</strong> (limiting distribution)</li>
+            <li>Has <strong>Gaussian increments</strong> (closed-form distributions)</li>
+        </ul>
+
+        <p><strong>Designed a decoding which:</strong></p>
+        <ul>
+            <li>Is <strong>indirectly supervised</strong> by encoding (matching forward transitions)</li>
+            <li>Gives <strong>Gaussian increments</strong> (tractable reverse steps)</li>
+        </ul>
+
+        <div class="info-box">
+            <strong>When combined in ELBO:</strong>
+            <ul>
+                <li><strong>Lots of closed-form expressions for KL divergences</strong> (between Gaussians)</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <h2>5. Practical Considerations and Extensions</h2>
+
+        <h3>5.1 How to Use in Research</h3>
+        <p><strong>How much math do you need to track?</strong></p>
+
+        <p><strong>Level 1 (Off-the-shelf):</strong></p>
+        <ul>
+            <li>Just use one of the implementations</li>
+            <li>Understand that if you mess with the architecture, you may break the theory</li>
+            <li>Maybe leave ELBO loss alone</li>
+            <li>Do play with architectures, $\beta$ scheduler</li>
+            <li>Display with input/output of denoising steps</li>
+        </ul>
+
+        <p><strong>Level 2 (Improve):</strong></p>
+        <ul>
+            <li>Many other physical models can give $\lim_{t \to \infty} x^t \sim \mathcal{N}(0, I)$</li>
+            <li><strong>Replace noising with something physical</strong> (e.g., heat equation, transport)</li>
+            <li>Think about challenges and requirements</li>
+        </ul>
+
+        <h3>5.2 Research Directions</h3>
+        <p><strong>Challenges:</strong></p>
+        <ul>
+            <li><strong>Expensive to generate</strong> – How can we use shorter $T$?</li>
+            <li>What other <strong>SDEs</strong> allow Gaussian reverse processes?</li>
+            <li>Can we extend to <strong>SPDEs</strong> (stochastic PDEs)?</li>
+        </ul>
+
+        <p><strong>Opportunities:</strong></p>
+        <ul>
+            <li>Replace Gaussian noise with <strong>physically motivated</strong> noise (e.g., turbulence, molecular dynamics)</li>
+            <li>Use problem-specific structure (e.g., symmetries, conservation laws)</li>
+            <li>Combine with <strong>physics-informed neural networks</strong> for constrained generation</li>
+        </ul>
+
+        <div class="warning-box">
+            <strong>Critical observation:</strong> The diffusion framework is flexible—any forward process that converges to a tractable prior can potentially be inverted via learned reverse transitions.
+        </div>
+    </section>
+
+    <hr>
+
+    <section>
+        <h2>Summary</h2>
+        <p>This lecture covered:</p>
+
+        <ol>
+            <li><strong>ELBO review</strong> and design goals for tractability</li>
+            <li><strong>Forward diffusion process</strong> with Gaussian noise addition</li>
+            <li><strong>Closed-form marginals</strong> $q(x^t | x^0) = \mathcal{N}(\sqrt{\bar{\alpha}_t} x^0, (1 - \bar{\alpha}_t) I)$</li>
+            <li><strong>Limiting behavior</strong> showing $x^T \to \mathcal{N}(0, I)$</li>
+            <li><strong>Reverse process</strong> parameterized as learned Gaussian transitions</li>
+            <li><strong>Justification</strong> via Bayes' rule and product of Gaussians</li>
+            <li><strong>Diffusion ELBO</strong> as sum of KL-divergences between Gaussians</li>
+            <li><strong>Practical considerations</strong> and research directions</li>
+        </ol>
+
+        <div class="info-box">
+            <strong>Key Takeaway:</strong> Denoising diffusion probabilistic models (DDPMs) provide a principled framework for generative modeling by gradually corrupting data with Gaussian noise (forward process) and learning to reverse this corruption (reverse process). The mathematical foundation rests on three pillars: (1) the forward process $q(x^t | x^{t-1}) = \mathcal{N}(\sqrt{1-\beta_t} x^{t-1}, \beta_t I)$ has closed-form marginals $q(x^t | x^0)$, making training efficient; (2) the reverse process $p(x^{t-1} | x^t)$ can be approximated by Gaussians for small $\beta_t$, justified via Bayes' rule; and (3) the ELBO decomposes into tractable KL-divergences between Gaussians. This design enables stable training, high-quality generation, and natural incorporation of physical priors through the choice of forward process. The framework demonstrates how continuous-time diffusion processes can inspire discrete-time machine learning architectures that are both theoretically grounded and practically effective.
+        </div>
+    </section>
+
+</body>
+</html>

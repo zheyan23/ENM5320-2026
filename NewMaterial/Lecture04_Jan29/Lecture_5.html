@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 5: Numerical Stabilization and Accuracy Analysis via Polynomial Reproduction - ENM5320</title>
+    
+    <!-- KaTeX CSS and JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+        }
+
+        h1 {
+            color: #011F5B;
+            border-bottom: 3px solid #990000;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+
+        h2 {
+            color: #011F5B;
+            margin-top: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+
+        h3 {
+            color: #011F5B;
+            margin-top: 20px;
+        }
+
+        h4 {
+            color: #011F5B;
+            margin-top: 15px;
+        }
+
+        p {
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+
+        ul, ol {
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #f8f9fa;
+            color: #011F5B;
+            font-weight: bold;
+        }
+
+        .katex-display {
+            margin: 1.5em 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .definition {
+            background: #f8f9fa;
+            border-left: 4px solid #82AFD3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .summary-box {
+            background: #fff3cd;
+            border: 1px solid #F2C100;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .example-box {
+            background: #e8f4f8;
+            border-left: 4px solid #82AFD3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .theorem-box {
+            background: #f0f0f0;
+            border: 2px solid #011F5B;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        strong {
+            color: #011F5B;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #82AFD3;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-link">← Back to Course Schedule</a>
+    
+    <h1>Lecture 5: Numerical Stabilization and Accuracy Analysis via Polynomial Reproduction</h1>
+
+    <p><strong>Reference:</strong> <a href="https://find.library.upenn.edu/catalog/9977071082103681?hld_id=53499053800003681">Gustafsson et al., Chapters 1-2</a>, <a href="https://doi.org/10.1093/imanum/drr030">Mirzaee et al., "On Generalized Moving Least Squares and Diffuse Derivatives"</a></p>
+    <p><strong>Topics:</strong> Artificial Viscosity, Lax-Friedrichs Method, Lax-Wendroff Method, Implicit Schemes, Crank-Nicolson Method, Polynomial Reproduction, Accuracy Theorems for Finite Difference Stencils</p>
+
+    <hr>
+
+    <h2>0. Overview</h2>
+    <p>In Lecture 4, we proved the <strong>Lax Equivalence Theorem</strong>: for well-posed problems with finite initial conditions, <strong>consistency + stability ⇒ convergence</strong>. This landmark result tells us that if a finite difference scheme approximates the PDE correctly (consistency) and doesn't amplify errors uncontrollably (stability), then the numerical solution will converge to the true PDE solution as the grid is refined. However, we also discovered a troubling fact: the simple explicit Euler method with centered differences for the transport equation \(\partial_t u = \partial_x u\) is <strong>unconditionally unstable</strong>, meaning \(|\hat{Q}| > 1\) for all finite ratios \(\lambda = k/h\) (where \(k\) is the time step and \(h\) is the spatial grid spacing). This scheme is consistent but unstable, and therefore it cannot converge—the amplification factor grows without bound, rendering the method useless in practice.</p>
+
+    <p>This raises a critical question: <strong>How do we stabilize finite difference schemes?</strong> In this lecture, we explore two fundamental approaches to achieving stability:</p>
+
+    <ol>
+        <li><strong>Artificial viscosity/dissipation:</strong> Add non-physical diffusion terms to damp high-frequency oscillations and control error growth. This technique leads to the <strong>Lax-Friedrichs</strong> and <strong>Lax-Wendroff</strong> methods, which are our first examples of numerical stabilization through carefully chosen dissipative regularization.</li>
+        <li><strong>Implicit time stepping:</strong> Evaluate spatial derivatives at the future time level, requiring the solution of a linear system at each time step. This approach yields <strong>unconditional stability</strong> (stable for all \(\lambda\)), with the <strong>Crank-Nicolson method</strong> as a particularly elegant example that preserves \(|\hat{Q}| = 1\) exactly.</li>
+    </ol>
+
+    <p>Understanding these stabilization strategies is essential not just for classical numerical analysis, but also for modern scientific machine learning. When we later design learned discretizations from data, we'll need to incorporate stabilization mechanisms—either through architectural choices that mimic implicit schemes or through learned regularization that acts like artificial viscosity. The goal is to reverse-engineer models that are not only accurate but also <strong>provably stable</strong> under iteration.</p>
+
+    <p>After establishing how to stabilize schemes, we turn to a more general question: <strong>How do we guarantee accuracy for arbitrary finite difference stencils?</strong> The second half of this lecture develops a powerful theorem based on <strong>polynomial reproduction</strong>: if a stencil exactly reproduces derivatives of polynomials up to degree \(m\), and if the stencil weights are appropriately bounded, then the stencil approximates the derivative of smooth functions with error \(O(h^{m+1-|\alpha|})\), where \(|\alpha|\) is the order of the derivative. This result, which connects to generalized moving least squares and meshfree methods, provides the theoretical foundation for designing high-order accurate discretizations.</p>
+
+    <hr>
+
+    <h2>1. Review: Lax Equivalence Theorem and the Instability Problem</h2>
+    <p>Let's briefly recall the key results from Lecture 4 that motivate today's discussion.</p>
+
+    <h3>1.1 The Lax Equivalence Theorem</h3>
+    <div class="theorem-box">
+        <strong>Lax Equivalence Theorem:</strong> For a well-posed linear PDE with finite initial data, a finite difference scheme converges if and only if it is consistent and stable.
+
+        <p>Formally, if:</p>
+        <ol>
+            <li>\(\|u_0\|^2 < \infty\) (finite initial condition)</li>
+            <li>\(\sup |\hat{Q}^n| \leq K\) for all \(n\) with \(t_n = nk \leq T\) (stability)</li>
+            <li>\(\lim_{k,h \to 0} \sup_{0 \leq t_n \leq T} |\hat{Q}^n(\xi) - e^{i\omega t_n}| = 0\) (consistency)</li>
+        </ol>
+
+        <p>Then:</p>
+        $$\lim_{k,h \to 0} \sup_{0 \leq t_n \leq T} \|U(x, t_n) - \text{Int}_N(u(x, t_n))\| = 0$$
+        <p>where \(\text{Int}_N\) is the trigonometric interpolation operator projecting the continuous solution onto the grid.</p>
+    </div>
+
+    <p><strong>Key insight:</strong> For finite initial conditions, stability plus consistency implies convergence.</p>
+
+    <h3>1.2 The Instability of Explicit Euler + Centered Differences</h3>
+    <p>Consider the transport equation \(\partial_t u = \partial_x u\) with the explicit Euler + centered difference scheme:</p>
+    $$\frac{v_j^{n+1} - v_j^n}{k} = D_0 v_j^n = \frac{v_{j+1}^n - v_{j-1}^n}{2h}$$
+
+    <p><strong>Fourier mode analysis:</strong> For a single mode \(e^{i\omega x}\), the amplification factor is:</p>
+    $$\hat{Q} = 1 + i\lambda \sin(\omega h)$$
+    <p>where \(\lambda = k/h\) is the <strong>CFL number</strong> (Courant-Friedrichs-Lewy ratio).</p>
+
+    <p><strong>Stability analysis:</strong></p>
+    $$|\hat{Q}| = |1 + i\lambda \sin(\omega h)| = \sqrt{1 + \lambda^2 \sin^2(\omega h)} \geq 1$$
+
+    <p>For any finite \(\lambda\), we have \(|\hat{Q}| > 1\) for most modes, leading to unbounded growth. This scheme is:</p>
+    <ul>
+        <li>✅ <strong>Consistent</strong> (truncation error → 0 as \(k, h → 0\))</li>
+        <li>❌ <strong>Unstable</strong> (amplification factor > 1)</li>
+        <li>❌ <strong>Does not converge</strong> (by Lax Equivalence Theorem)</li>
+    </ul>
+
+    <p><strong>This brings us to the central question:</strong> Can we modify the scheme to achieve stability while preserving consistency?</p>
+
+    <hr>
+
+    <h2>2. Stabilization via Artificial Viscosity</h2>
+    <p>One approach to stabilize explicit schemes is to add a <strong>diffusion term</strong> that damps high-frequency oscillations. This technique, called <strong>artificial viscosity</strong>, deliberately introduces non-physical dissipation to control numerical instability.</p>
+
+    <h3>2.1 Adding Artificial Viscosity</h3>
+    <p>Consider modifying the transport equation by adding a diffusive term:</p>
+    $$\partial_t u = \partial_x u + \sigma h \partial_{xx} u$$
+    <p>where \(\sigma\) is a <strong>stabilization parameter</strong> and \(h\) is the grid spacing.</p>
+
+    <p><strong>Key observations:</strong></p>
+    <ul>
+        <li>As \(h \to 0\), the diffusion term \(\sigma h \partial_{xx} u \to 0\), so we recover the true transport equation</li>
+        <li>The added term is \(O(h)\), which does not destroy consistency</li>
+        <li>The diffusion damps high-frequency modes, providing numerical stabilization</li>
+    </ul>
+
+    <p>The discrete scheme becomes:</p>
+    $$\frac{v_j^{n+1} - v_j^n}{k} = D_0 v_j^n + \sigma h D_+ D_- v_j^n$$
+
+    <p>where:</p>
+    <ul>
+        <li>\(D_0 v_j^n = \frac{v_{j+1}^n - v_{j-1}^n}{2h}\) (centered difference for first derivative)</li>
+        <li>\(D_+ D_- v_j^n = \frac{v_{j+1}^n - 2v_j^n + v_{j-1}^n}{h^2}\) (second difference for \(\partial_{xx}\))</li>
+    </ul>
+
+    <h3>2.2 Fourier Analysis of the Stabilized Scheme</h3>
+    <div class="example-box">
+        <strong>Computing the Amplification Factor</strong>
+
+        <p><strong>Step 1:</strong> Compute the amplification factor.</p>
+        <p>Recall the action of finite difference operators on Fourier modes:</p>
+        $$\begin{aligned}
+        h D_0 e^{i\omega x} &= i \sin(\omega h) e^{i\omega x} \\
+        h^2 D_+ D_- e^{i\omega x} &= -4 \sin^2\left(\frac{\omega h}{2}\right) e^{i\omega x}
+        \end{aligned}$$
+
+        <p>Let \(\lambda = k/h\) (CFL number) and \(\xi = \omega h\) (scaled wavenumber). The amplification factor is:</p>
+        $$\hat{Q} = 1 + i\lambda \sin\xi - 4\sigma\lambda \sin^2\left(\frac{\xi}{2}\right)$$
+
+        <p><strong>Step 2:</strong> Compute \(|\hat{Q}|^2\).</p>
+        <p>Using \(|a + ib|^2 = a^2 + b^2\):</p>
+        $$|\hat{Q}|^2 = \left(1 - 4\sigma\lambda \sin^2\frac{\xi}{2}\right)^2 + \lambda^2 \sin^2\xi$$
+
+        <p><strong>Step 3:</strong> Expand and simplify using \(\sin^2\xi = 4\sin^2(\xi/2)\cos^2(\xi/2)\):</p>
+        $$|\hat{Q}|^2 = 1 - \left(8\sigma\lambda - 4\lambda^2\right) \sin^2\frac{\xi}{2} + 4\lambda^2\left(4\sigma^2 - 1\right) \sin^4\frac{\xi}{2}$$
+    </div>
+
+    <h3>2.3 Stability Conditions</h3>
+    <p>For stability, we require \(|\hat{Q}|^2 \leq 1\) for all \(\xi\). This can be achieved in two ways.</p>
+
+    <h4>Strategy 1: Make Both Correction Terms Negative</h4>
+    <p>Require both coefficients to be non-negative:</p>
+    $$\begin{aligned}
+    8\sigma\lambda - 4\lambda^2 &\geq 0 \quad \Rightarrow \quad \sigma \geq \frac{\lambda}{2} \\
+    4\lambda^2(4\sigma^2 - 1) &\leq 0 \quad \Rightarrow \quad \sigma \leq \frac{1}{2}
+    \end{aligned}$$
+
+    <p><strong>Conclusion:</strong> Choose \(\frac{\lambda}{2} \leq \sigma \leq \frac{1}{2}\) with \(0 < \lambda \leq 1\).</p>
+    <p>This gives the <strong>Lax-Friedrichs method</strong> at \(\sigma = \frac{1}{2\lambda}\).</p>
+
+    <h4>Strategy 2: Balance at Worst-Case Mode</h4>
+    <p>Consider the worst-case scenario where \(\sin^2(\xi/2) = 1\) (i.e., \(\xi = \pi\), the Nyquist frequency). This analysis leads to:</p>
+    $$\sigma \leq \frac{1}{2\lambda}$$
+
+    <p><strong>Conclusion:</strong> For \(\sigma \geq \frac{1}{2}\), stability requires \(\lambda \leq \frac{1}{2\sigma}\).</p>
+    <p>This gives the <strong>Lax-Wendroff method</strong> at \(\sigma = \frac{\lambda}{2}\) (satisfying \(2\sigma\lambda = \lambda^2 \leq 1\) when \(\lambda \leq 1\)).</p>
+
+    <hr>
+
+    <h2>3. The Lax-Friedrichs and Lax-Wendroff Methods</h2>
+    <p>From the stability analysis above, we obtain two classical stable schemes for the transport equation.</p>
+
+    <h3>3.1 Lax-Friedrichs Method</h3>
+    <p><strong>Choice:</strong> \(\sigma = \frac{h}{2k} = \frac{1}{2\lambda}\)</p>
+
+    <p><strong>Scheme:</strong></p>
+    $$v_j^{n+1} = \frac{1}{2}\left(v_{j+1}^n + v_{j-1}^n\right) - \frac{\lambda}{2}\left(v_{j+1}^n - v_{j-1}^n\right)$$
+    <p>where \(\lambda = k/h\).</p>
+
+    <p><strong>Interpretation:</strong></p>
+    <ul>
+        <li>Replaces \(v_j^n\) with the average \((v_{j+1}^n + v_{j-1}^n)/2\), introducing strong dissipation</li>
+        <li>Stable for \(\lambda \leq 1\) (CFL condition)</li>
+        <li>First-order accurate in time and second-order accurate in space</li>
+    </ul>
+
+    <h3>3.2 Lax-Wendroff Method</h3>
+    <p><strong>Choice:</strong> \(\sigma = \frac{k}{2h} = \frac{\lambda}{2}\)</p>
+
+    <p><strong>Scheme:</strong></p>
+    $$v_j^{n+1} = v_j^n + \frac{k}{2h}(v_{j+1}^n - v_{j-1}^n) + \frac{k^2}{2h^3}(v_{j+1}^n - 2v_j^n + v_{j-1}^n)$$
+
+    <p><strong>Interpretation:</strong></p>
+    <ul>
+        <li>The \(k^2\) term naturally arises from a Taylor series expansion in time combined with the PDE</li>
+        <li>Represents a second-order accurate approximation in both space and time</li>
+        <li>Stable for \(\lambda \leq 1\)</li>
+    </ul>
+
+    <p><strong>Derivation motivation (Taylor series):</strong></p>
+    <p>Starting from \(u_t = u_x\), we have \(u_{tt} = u_{xt} = u_{xx}\). A Taylor expansion in time gives:</p>
+    $$u(t + k) = u(t) + k u_t + \frac{k^2}{2} u_{tt} = u(t) + k u_x + \frac{k^2}{2} u_{xx}$$
+    <p>The Lax-Wendroff method discretizes this expression exactly!</p>
+
+    <h3>3.3 Summary: Artificial Viscosity for Stability</h3>
+    <p><strong>Key Takeaways:</strong></p>
+    <ul>
+        <li>Artificial viscosity provides our first example of <strong>numerical stabilization</strong> by adding dissipative terms</li>
+        <li>The parameter \(\sigma\) controls the amount of added diffusion</li>
+        <li>Both Lax-Friedrichs and Lax-Wendroff are conditionally stable (\(\lambda \leq 1\))</li>
+        <li>The price: added dissipation can smear sharp features (numerical diffusion)</li>
+    </ul>
+
+    <p><strong>Important note:</strong> These methods add non-physical terms to achieve stability. While practical, this approach has limitations—excessive dissipation can corrupt solutions. An alternative is to use <strong>implicit schemes</strong>, which achieve stability through algebraic structure rather than added viscosity.</p>
+
+    <hr>
+
+    <h2>4. Implicit Schemes and Unconditional Stability</h2>
+    <p>Instead of adding artificial viscosity, we can achieve stability by evaluating spatial derivatives at the <strong>future time level</strong> \(n+1\) rather than the current level \(n\). This leads to <strong>implicit schemes</strong>, which require solving a linear system at each time step.</p>
+
+    <h3>4.1 Implicit Euler Scheme</h3>
+    <p><strong>Scheme:</strong></p>
+    $$\frac{v_j^{n+1} - v_j^n}{k} = D_0 v_j^{n+1}$$
+
+    <p>Rearranging in operator form:</p>
+    $$(I - k D_0) v^{n+1} = v^n$$
+
+    <p><strong>Fourier analysis:</strong></p>
+    <p>For a mode \(e^{i\omega x}\):</p>
+    $$\hat{Q} = [1 - i\lambda \sin\xi]^{-1}$$
+
+    <p><strong>Stability:</strong></p>
+    $$|\hat{Q}| = \frac{1}{|1 - i\lambda \sin\xi|} = \frac{1}{\sqrt{1 + \lambda^2 \sin^2\xi}} \leq 1$$
+    <p>for all \(\lambda, \xi\).</p>
+
+    <p><strong>Conclusion:</strong> The implicit Euler scheme is <strong>unconditionally stable</strong> for any CFL number \(\lambda = k/h\).</p>
+
+    <p><strong>Tradeoff:</strong></p>
+    <ul>
+        <li>✅ Stable for arbitrarily large time steps</li>
+        <li>❌ Requires solving a linear system \((I - k D_0) v^{n+1} = v^n\) at each step</li>
+        <li>❌ Only first-order accurate in time</li>
+    </ul>
+
+    <h3>4.2 Crank-Nicolson Method</h3>
+    <p>A particularly elegant implicit scheme is the <strong>Crank-Nicolson method</strong>, which uses a <strong>trapezoidal rule</strong> in time by averaging the spatial derivative at times \(n\) and \(n+1\).</p>
+
+    <p><strong>Scheme:</strong></p>
+    $$\frac{v_j^{n+1} - v_j^n}{k} = \frac{1}{2} D_0 v_j^{n+1} + \frac{1}{2} D_0 v_j^n$$
+
+    <p>Rearranging:</p>
+    $$\left(I - \frac{k}{2} D_0\right) v_j^{n+1} = \left(I + \frac{k}{2} D_0\right) v_j^n$$
+
+    <p><strong>Fourier analysis:</strong></p>
+    $$\hat{Q} = \frac{1 + \frac{i\lambda}{2}\sin\xi}{1 - \frac{i\lambda}{2}\sin\xi}$$
+
+    <p><strong>Stability:</strong></p>
+    $$|\hat{Q}| = \left|\frac{1 + \frac{i\lambda}{2}\sin\xi}{1 - \frac{i\lambda}{2}\sin\xi}\right| = \frac{\sqrt{1 + (\lambda\sin\xi/2)^2}}{\sqrt{1 + (\lambda\sin\xi/2)^2}} = 1$$
+
+    <p><strong>Remarkable property:</strong> \(|\hat{Q}| = 1\) <strong>exactly</strong> for all modes!</p>
+
+    <p><strong>Advantages:</strong></p>
+    <ul>
+        <li>✅ <strong>Unconditionally stable</strong> for all \(\lambda\)</li>
+        <li>✅ <strong>No numerical dissipation</strong> (\(|\hat{Q}| = 1\) means energy is conserved)</li>
+        <li>✅ <strong>Second-order accurate in time</strong> (trapezoidal rule)</li>
+    </ul>
+
+    <p><strong>Disadvantages:</strong></p>
+    <ul>
+        <li>❌ Requires solving a linear system at each step</li>
+        <li>❌ Can exhibit oscillations for steep gradients (no dissipation to smooth them)</li>
+    </ul>
+
+    <h3>4.3 Comparison: Explicit vs. Implicit Schemes</h3>
+    <table>
+        <tr>
+            <th>Method</th>
+            <th>Type</th>
+            <th>Stability</th>
+            <th>Accuracy</th>
+            <th>Cost per step</th>
+        </tr>
+        <tr>
+            <td>Explicit Euler + Centered</td>
+            <td>Explicit</td>
+            <td>Unstable</td>
+            <td>1st order time</td>
+            <td>Low (explicit)</td>
+        </tr>
+        <tr>
+            <td>Lax-Friedrichs</td>
+            <td>Explicit</td>
+            <td>\(\lambda \leq 1\)</td>
+            <td>1st order time</td>
+            <td>Low (explicit)</td>
+        </tr>
+        <tr>
+            <td>Lax-Wendroff</td>
+            <td>Explicit</td>
+            <td>\(\lambda \leq 1\)</td>
+            <td>2nd order time</td>
+            <td>Low (explicit)</td>
+        </tr>
+        <tr>
+            <td>Implicit Euler</td>
+            <td>Implicit</td>
+            <td>Unconditional</td>
+            <td>1st order time</td>
+            <td>High (linear solve)</td>
+        </tr>
+        <tr>
+            <td>Crank-Nicolson</td>
+            <td>Implicit</td>
+            <td>Unconditional</td>
+            <td>2nd order time</td>
+            <td>High (linear solve)</td>
+        </tr>
+    </table>
+
+    <p><strong>Practical considerations:</strong></p>
+    <ul>
+        <li>Explicit methods: cheap per step, but require small time steps for stability</li>
+        <li>Implicit methods: expensive per step (linear solve), but allow large time steps</li>
+        <li>Crank-Nicolson: "best of both worlds" for smooth problems (2nd order, no dissipation)</li>
+    </ul>
+
+    <hr>
+
+    <h2>5. Accuracy Analysis via Polynomial Reproduction</h2>
+    <p>Now that we understand how to stabilize finite difference schemes, we turn to a more general question: <strong>How do we guarantee the accuracy of arbitrary finite difference stencils?</strong> The answer lies in a beautiful theorem connecting <strong>polynomial reproduction</strong> to <strong>convergence rates</strong>.</p>
+
+    <p>This theory is particularly important for modern methods like <strong>meshfree methods</strong>, <strong>generalized finite differences</strong>, and <strong>learned discretizations</strong>, where stencils may be irregular or adapted to data. The key reference is the paper by Mirzaee et al., <a href="https://doi.org/10.1093/imanum/drr030">"On Generalized Moving Least Squares and Diffuse Derivatives"</a>.</p>
+
+    <h3>5.1 Setting: Generalized Finite Difference Stencils</h3>
+    <p>Consider a <strong>generic finite difference stencil</strong> approximating a differential operator \(D^\alpha u\), where \(\alpha\) is a <strong>multi-index</strong> denoting the order of derivatives.</p>
+
+    <p><strong>Multi-index notation:</strong></p>
+    <ul>
+        <li>\(\alpha = (\alpha_1, \alpha_2, \ldots)\) is a tuple of non-negative integers</li>
+        <li>\(D^\alpha = \partial_x^{\alpha_1} \partial_y^{\alpha_2} \cdots\)</li>
+        <li>\(|\alpha| = \alpha_1 + \alpha_2 + \cdots\) is the <strong>total order</strong> of the derivative</li>
+    </ul>
+
+    <p><strong>Examples:</strong></p>
+    <ul>
+        <li>\(\alpha = (1, 0) \Rightarrow D^\alpha = \partial_x\), \(|\alpha| = 1\)</li>
+        <li>\(\alpha = (2, 0) \Rightarrow D^\alpha = \partial_{xx}\), \(|\alpha| = 2\)</li>
+        <li>\(\alpha = (1, 2) \Rightarrow D^\alpha = \partial_x \partial_{yy}\), \(|\alpha| = 3\)</li>
+    </ul>
+
+    <p><strong>Generic stencil:</strong> A discrete approximation \(D_h^\alpha\) at grid point \(x_i\) is given by:</p>
+    $$D_h^\alpha u_i = \sum_j S_{ji}^\alpha u_j$$
+    <p>where \(S_{ji}^\alpha\) are <strong>stencil weights</strong> and the sum is over neighboring grid points \(x_j\).</p>
+
+    <p><strong>Key questions:</strong></p>
+    <ol>
+        <li>How do we choose stencil weights \(S_{ji}^\alpha\) to guarantee accuracy?</li>
+        <li>What convergence rate can we expect as \(h \to 0\)?</li>
+    </ol>
+
+    <h3>5.2 The Polynomial Reproduction Theorem</h3>
+    <p>The following theorem provides a complete answer, establishing that <strong>polynomial reproduction</strong> is both necessary and sufficient for optimal accuracy.</p>
+
+    <div class="theorem-box">
+        <strong>Theorem (Polynomial Reproduction for Accuracy):</strong>
+
+        <p>Suppose the stencil \(D_h^\alpha\) satisfies:</p>
+
+        <p><strong>1. Polynomial reproduction of order \(m\):</strong></p>
+        $$\sum_j S_{ji}^\alpha p_j = D^\alpha p(x_i) \quad \text{for all polynomials } p \in \mathcal{P}_m$$
+        <p>where \(\mathcal{P}_m\) is the space of polynomials of degree at most \(m\).</p>
+
+        <p><strong>2. Bounded stencil weights:</strong></p>
+        $$\sum_j |S_{ji}^\alpha| \leq C h^{-|\alpha|}$$
+        <p>where \(C\) is independent of \(h\).</p>
+
+        <p><strong>Then for smooth functions \(u \in C^{m+1}\):</strong></p>
+        $$\|D_h^\alpha u - D^\alpha u\|_{L^\infty} \leq C h^{m+1-|\alpha|} |u|_{C^{m+1}}$$
+        <p>where \(|u|_{C^{m+1}} = \max_{|\beta| = m+1} \|\partial^\beta u\|_{L^\infty}\) is the \((m+1)\)-th derivative seminorm.</p>
+    </div>
+
+    <p><strong>Interpretation:</strong></p>
+    <ul>
+        <li>If the stencil exactly reproduces derivatives of polynomials up to degree \(m\), then it approximates derivatives of smooth functions with error \(O(h^{m+1-|\alpha|})\)</li>
+        <li>Higher-order polynomial reproduction ⇒ higher-order accuracy</li>
+        <li>The weight bound condition ensures stability (prevents stencil weights from blowing up)</li>
+    </ul>
+
+    <h3>5.3 Proof of the Polynomial Reproduction Theorem</h3>
+    <p>The proof is a beautiful application of polynomial approximation theory, combining the triangle inequality with Taylor series estimates.</p>
+
+    <div class="example-box">
+        <strong>Proof:</strong>
+
+        <p><strong>Step 1:</strong> Use the triangle inequality to separate exact and approximate derivatives.</p>
+        <p>Let \(p \in \mathcal{P}_m\) be an arbitrary polynomial of degree at most \(m\). For any function \(u\):</p>
+        $$|D_h^\alpha u - D^\alpha u| \leq |D^\alpha u - D^\alpha p| + |D^\alpha p - D_h^\alpha p| + |D_h^\alpha p - D_h^\alpha u|$$
+
+        <p><strong>Step 2:</strong> Use polynomial reproduction to eliminate the middle term.</p>
+        <p>By assumption (1), the stencil exactly reproduces derivatives of \(p\):</p>
+        $$D_h^\alpha p(x_i) = \sum_j S_{ji}^\alpha p_j = D^\alpha p(x_i)$$
+        <p>Therefore:</p>
+        $$|D_h^\alpha u - D^\alpha u| \leq |D^\alpha u - D^\alpha p| + |D_h^\alpha p - D_h^\alpha u|$$
+
+        <p><strong>Step 3:</strong> Apply the stencil to the difference \(u - p\).</p>
+        $$|D_h^\alpha u - D_h^\alpha p| = \left|\sum_j S_{ji}^\alpha (u_j - p_j)\right| \leq \sum_j |S_{ji}^\alpha| |u_j - p_j|$$
+        <p>Taking the \(L^\infty\) norm:</p>
+        $$\|D_h^\alpha u - D_h^\alpha p\|_{L^\infty} \leq \|u - p\|_{L^\infty} \sum_j |S_{ji}^\alpha|$$
+
+        <p><strong>Step 4:</strong> Use the weight bound assumption (2).</p>
+        $$\|D_h^\alpha u - D_h^\alpha p\|_{L^\infty} \leq C h^{-|\alpha|} \|u - p\|_{L^\infty}$$
+
+        <p><strong>Step 5:</strong> Combine terms.</p>
+        $$\|D_h^\alpha u - D^\alpha u\|_{L^\infty} \leq \|D^\alpha u - D^\alpha p\|_{L^\infty} + C h^{-|\alpha|} \|u - p\|_{L^\infty}$$
+
+        <p><strong>Step 6:</strong> Choose \(p\) as the Taylor polynomial of \(u\) at \(x_i\).</p>
+        <p>By Taylor's theorem, the optimal polynomial approximation of degree \(m\) gives:</p>
+        $$\begin{aligned}
+        \|u - p\|_{L^\infty} &\leq C_1 h^{m+1} |u|_{C^{m+1}} \\
+        \|D^\alpha u - D^\alpha p\|_{L^\infty} &\leq C_2 h^{m+1-|\alpha|} |u|_{C^{m+1}}
+        \end{aligned}$$
+
+        <p><strong>Step 7:</strong> Substitute into the bound.</p>
+        $$\|D_h^\alpha u - D^\alpha u\|_{L^\infty} \leq (C_2 + C C_1) h^{m+1-|\alpha|} |u|_{C^{m+1}}$$
+    </div>
+
+    <p><strong>Conclusion:</strong></p>
+    $$\boxed{\|D_h^\alpha u - D^\alpha u\|_{L^\infty} \leq C h^{m+1-|\alpha|} |u|_{C^{m+1}}}$$
+
+    <h3>5.4 Implications and Applications</h3>
+    <p><strong>Critical observations:</strong></p>
+
+    <ol>
+        <li><strong>Polynomial reproduction is the key to accuracy:</strong> To achieve \(m\)-th order accuracy for a \(|\alpha|\)-th order derivative, the stencil must exactly reproduce derivatives of polynomials up to degree \(m\).</li>
+
+        <li><strong>Standard finite differences satisfy these conditions:</strong> For example, the centered difference stencil \(D_0 u_j = (u_{j+1} - u_{j-1})/(2h)\) reproduces first derivatives of polynomials up to degree 2, giving \(O(h^2)\) accuracy for \(\partial_x u\).</li>
+
+        <li><strong>Generalizes to irregular grids:</strong> The theorem applies to <strong>arbitrary stencils</strong>, not just uniform grids. This is crucial for:
+            <ul>
+                <li><strong>Meshfree methods</strong> (moving least squares, RBF methods)</li>
+                <li><strong>Generalized finite differences</strong> on scattered points</li>
+                <li><strong>Learned discretizations</strong> with data-adapted stencils</li>
+            </ul>
+        </li>
+
+        <li><strong>Connection to moving least squares:</strong> The Mirzaee et al. paper shows that generalized moving least squares (GMLS) methods automatically satisfy polynomial reproduction, making them a powerful tool for constructing high-order accurate stencils on irregular grids.</li>
+
+        <li><strong>Design principle for learned discretizations:</strong> When learning stencil weights from data (as we'll do later in this course), we can <strong>enforce polynomial reproduction as a constraint</strong> to guarantee convergence. This is an example of incorporating mathematical structure into machine learning architectures.</li>
+    </ol>
+
+    <hr>
+
+    <h2>6. Summary</h2>
+    <div class="summary-box">
+        <p>This lecture developed two fundamental tools for analyzing and designing finite difference schemes:</p>
+
+        <p><strong>1. Numerical stabilization techniques:</strong></p>
+        <ul>
+            <li><strong>Artificial viscosity</strong> (Lax-Friedrichs, Lax-Wendroff): Add dissipative terms to control growth</li>
+            <li><strong>Implicit time stepping</strong> (Implicit Euler, Crank-Nicolson): Evaluate spatial derivatives at future time level</li>
+        </ul>
+
+        <p><strong>2. Polynomial reproduction theorem:</strong></p>
+        <ul>
+            <li>Stencils that exactly reproduce derivatives of polynomials up to degree \(m\) achieve \(O(h^{m+1-|\alpha|})\) accuracy</li>
+            <li>Bounded stencil weights ensure stability</li>
+            <li>Applies to arbitrary stencils, including irregular grids and learned discretizations</li>
+        </ul>
+
+        <p><strong>Main Topics Covered:</strong></p>
+        <ol>
+            <li>Review of Lax Equivalence Theorem and the instability problem</li>
+            <li>Artificial viscosity: Adding \(\sigma h \partial_{xx} u\) to stabilize transport equation</li>
+            <li>Lax-Friedrichs method: \(\sigma = \frac{1}{2\lambda}\), stable for \(\lambda \leq 1\)</li>
+            <li>Lax-Wendroff method: \(\sigma = \frac{\lambda}{2}\), second-order accurate</li>
+            <li>Implicit schemes: Unconditional stability by evaluating derivatives at \(t^{n+1}\)</li>
+            <li>Crank-Nicolson method: \(|\hat{Q}| = 1\) exactly, second-order accurate</li>
+            <li>Polynomial reproduction theorem: Accuracy guarantees for generalized stencils</li>
+            <li>Applications: Meshfree methods, learned discretizations, irregular grids</li>
+        </ol>
+
+        <p><strong>Key Takeaway:</strong> Stability can be achieved either by adding dissipation (artificial viscosity) or by implicit formulations (solving linear systems). For learning problems, we must design architectures that either incorporate stabilization mechanisms or learn them from data while preserving convergence guarantees. The polynomial reproduction theorem provides a powerful tool for ensuring accuracy of both conventional and learned discretizations on arbitrary grids.</p>
+
+        <p><strong>Looking ahead:</strong> In the next lectures, we'll explore how to apply these stability and accuracy principles to design physics-informed neural networks and learned discretizations that provably converge to PDE solutions.</p>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "\\[", right: "\\]", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>

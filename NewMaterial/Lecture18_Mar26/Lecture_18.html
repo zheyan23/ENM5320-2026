@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 18: Attention Mechanisms and Physics-Inspired Architectures</title>
+    
+    <!-- KaTeX CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    
+    <!-- KaTeX JS -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    
+    <!-- KaTeX Auto-render -->
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+            onload="renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });"></script>
+    
+    <style>
+        :root {
+            --penn-blue: #011F5B;
+            --penn-red: #990000;
+            --light-gray: #f5f5f5;
+            --border-gray: #ddd;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--penn-blue) 0%, #012a7a 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .topics {
+            background-color: var(--light-gray);
+            padding: 1.5rem;
+            border-left: 4px solid var(--penn-red);
+            margin: 2rem 0;
+            border-radius: 5px;
+        }
+        
+        .topics h3 {
+            color: var(--penn-blue);
+            margin-bottom: 0.5rem;
+        }
+        
+        .topics ul {
+            margin-left: 1.5rem;
+        }
+        
+        .topics li {
+            margin: 0.3rem 0;
+        }
+        
+        h2 {
+            color: var(--penn-blue);
+            font-size: 1.75rem;
+            margin: 2.5rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--penn-red);
+        }
+        
+        h3 {
+            color: var(--penn-blue);
+            font-size: 1.35rem;
+            margin: 2rem 0 1rem 0;
+        }
+        
+        h4 {
+            color: var(--penn-blue);
+            font-size: 1.1rem;
+            margin: 1.5rem 0 0.75rem 0;
+        }
+        
+        p {
+            margin: 1rem 0;
+            text-align: justify;
+        }
+        
+        .katex-display {
+            margin: 1.5rem 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        
+        .katex {
+            font-size: 1.1em;
+        }
+        
+        code {
+            background-color: var(--light-gray);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+        }
+        
+        strong {
+            color: var(--penn-blue);
+            font-weight: 600;
+        }
+        
+        em {
+            color: var(--penn-red);
+            font-style: italic;
+        }
+        
+        .summary-box {
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+            padding: 2rem;
+            border-left: 5px solid var(--penn-blue);
+            border-radius: 8px;
+            margin: 3rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .summary-box h2 {
+            border-bottom: none;
+            margin-top: 0;
+        }
+        
+        .summary-box ul {
+            margin-left: 1.5rem;
+        }
+        
+        .summary-box li {
+            margin: 0.5rem 0;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin: 2rem 0;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--penn-blue);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .back-link:hover {
+            background-color: #023875;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid var(--border-gray);
+            margin: 2rem 0;
+        }
+        
+        ul, ol {
+            margin: 1rem 0 1rem 2rem;
+        }
+        
+        li {
+            margin: 0.5rem 0;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            header {
+                padding: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            h2 {
+                font-size: 1.4rem;
+            }
+            
+            .katex {
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Lecture 18: Attention Mechanisms and Physics-Inspired Architectures</h1>
+        <p class="subtitle">Transformers, Attention, and Hamiltonian Neural Networks</p>
+    </header>
+
+    <div class="topics">
+        <h3>Topics Covered</h3>
+        <ul>
+            <li>Conditional neural fields and cross-attention</li>
+            <li>Multi-head attention mechanisms</li>
+            <li>Dropout regularization</li>
+            <li>Graph attention networks (GATs)</li>
+            <li>Physics-inspired architectures (GRAND)</li>
+            <li>Hamiltonian neural networks</li>
+            <li>Double-bracket dynamics</li>
+        </ul>
+    </div>
+
+    <h2>0. Overview</h2>
+
+    <p>This lecture bridges classical attention mechanisms from natural language processing with physics-inspired neural network architectures. Having developed graph calculus and the Hodge decomposition in previous lectures, we now see how these mathematical structures naturally arise in modern deep learning architectures—particularly in <strong>transformers</strong> and <strong>graph neural networks</strong>.</p>
+
+    <p>The key insight is that attention can be viewed as a <strong>soft dictionary lookup</strong> or, equivalently, as a data-driven basis function similar to finite element methods. When we introduced finite elements, we saw that functions could be represented as $f(x) = \sum_i \alpha_i(x, x_i) y_i$ where $\alpha_i$ are piecewise linear basis functions. Attention generalizes this by learning the weights $\alpha_i(q, \vec{k})$ from data rather than fixing them geometrically.</p>
+
+    <p>We begin with <strong>conditional neural fields</strong>, where a latent code $z$ modulates input-output relationships—crucial for operator learning in PDEs. We then dissect the <strong>transformer architecture</strong>: queries, keys, values, multi-head attention, and dropout. Moving to graphs, we examine <strong>Graph Attention Networks (GATs)</strong>, which suffer from over-squashing and over-smoothing problems. Physics-inspired solutions emerge from recognizing that GATs implicitly define graph Laplacians.</p>
+
+    <p>Finally, we introduce <strong>Hamiltonian neural networks</strong> and <strong>double-bracket dynamics</strong>, showing how energy-preserving and energy-dissipating systems can be built into neural architectures. These connections reveal deep relationships between optimization, dynamical systems, and modern machine learning.</p>
+
+    <h2>1. Conditional Neural Fields</h2>
+
+    <h3>1.1 Problem Setup</h3>
+
+    <p>Consider the <strong>conditional neural field</strong>:</p>
+
+    $$
+    y = f(x \mid z; \theta)
+    $$
+
+    <p><strong>Idea:</strong> The latent code $z$ <strong>modulates</strong> the $x \to y$ input-output relationship.</p>
+
+    <p><strong>Examples:</strong></p>
+    <ul>
+        <li>$y$ = finite difference stencil</li>
+        <li>$x$ = grid function</li>
+        <li>$z$ = material properties / microscopic structure</li>
+    </ul>
+
+    <h3>1.2 Architecture Options</h3>
+
+    <p>Many options for implementing this:</p>
+    <ol>
+        <li><strong>DeepONet</strong> (Lu et al.)</li>
+        <li><strong>PCA/FNO</strong> (Stewart, Li et al.)</li>
+        <li><strong>Cross-attention</strong> (⭐ focus of this lecture)</li>
+    </ol>
+
+    <p><strong>Pedagogical note:</strong> Cross-attention provides the most flexible framework, allowing the model to dynamically select relevant features from the conditioning variable $z$ based on the query location $x$.</p>
+
+    <h2>2. Attention as Soft Dictionary Lookup</h2>
+
+    <h3>2.1 Key-Value Pairs</h3>
+
+    <p><strong>Reference:</strong> Murphy §15.4.1</p>
+
+    <p>Consider $(k_i, v_i)_{i=1}^N$ as <strong>key-value pairs</strong> describing input-output labels.</p>
+
+    <p>Consider a <strong>query</strong> $q$ representing where the model is evaluated.</p>
+
+    <p><strong>Definition:</strong> The <strong>attention function</strong> is:</p>
+
+    $$
+    \text{Attn}(q, \{k_i, v_i\}) = \sum_{i=1}^N \alpha_i(q, \vec{k}) v_i
+    $$
+
+    <p>where <strong>attention weights</strong> satisfy:</p>
+
+    $$
+    \begin{aligned}
+    0 &\leq \alpha_i \leq 1 \\
+    \sum_i \alpha_i &= 1
+    \end{aligned}
+    $$
+
+    <h3>2.2 Attention Scores and Softmax</h3>
+
+    <p>Introduce an <strong>attention score</strong> $a(q, k_i)$:</p>
+
+    $$
+    \alpha_i = \text{softmax}(a(q, \vec{k})) = \frac{\exp[a(q, k_i)]}{\sum_j \exp[a(q, k_j)]}
+    $$
+
+    <h3>2.3 Connection to Finite Elements</h3>
+
+    <p><strong>Remark:</strong> This is a <strong>data-driven basis</strong>!</p>
+
+    <p>For example, taking $\alpha_i(q, \vec{k}) = \phi_i(q)$ (CPWL basis functions) satisfies the same properties:</p>
+
+    $$
+    f(x) = \sum_i \alpha_i(x, x_n) y_i
+    $$
+
+    <p>where:</p>
+    <ul>
+        <li>$q \to x$ (query location)</li>
+        <li>$k \to x_n$ (nodal positions)</li>
+        <li>$v \to y_i$ (nodal values)</li>
+    </ul>
+
+    <p><strong>Critical observation:</strong> Attention generalizes finite element interpolation by learning the basis functions rather than fixing them geometrically!</p>
+
+    <h2>3. Multi-Head Attention</h2>
+
+    <h3>3.1 Architecture</h3>
+
+    <p>Introduce <strong>dense MLP blocks</strong> for $i = 1, \ldots, M$ (number of heads):</p>
+
+    $$
+    \begin{aligned}
+    \hat{q}_i &= Q_i(q) \\
+    \hat{k}_i &= K_i(k) \\
+    \hat{v}_i &= V_i(v)
+    \end{aligned}
+    $$
+
+    <p>Then:</p>
+
+    $$
+    h_i = \text{Attn}(\hat{q}_i, \{\hat{k}_i, \hat{v}_i\})
+    $$
+
+    <p><strong>Final aggregation:</strong></p>
+
+    $$
+    h = \text{MHA}(q, \{k, v\}) = \text{Concat}(h_1, \ldots, h_M) W^O
+    $$
+
+    <p><strong>Interpretation:</strong> Each head learns to attend to different aspects of the input (e.g., position vs. semantic meaning), analogous to using multiple finite element spaces for different solution components.</p>
+
+    <h2>4. Dropout Regularization</h2>
+
+    <h3>4.1 Mechanism</h3>
+
+    <p><strong>With probability $p$</strong>, at each forward pass the output of a given neuron will be <strong>dropped</strong> (set to zero).</p>
+
+    <p><strong>Implementation:</strong> Replace weights:</p>
+
+    $$
+    \begin{aligned}
+    \theta_{lji} &= \omega_{lji} \varepsilon_{li} \\
+    \varepsilon_{li} &\sim \text{Bernoulli}(1-p)
+    \end{aligned}
+    $$
+
+    <p><strong>Interpretation:</strong> Dropout forces the network to learn robust features that don't rely on any single neuron, preventing co-adaptation and improving generalization.</p>
+
+    <h2>5. Graph Attention Networks</h2>
+
+    <h3>5.1 GAT Algorithm</h3>
+
+    <p><strong>Steps:</strong></p>
+
+    <p><strong>Step 1:</strong> Input features. Each node $n_i \in N$ has feature vector $h_i^n \in \mathbb{R}^F$.</p>
+
+    <p><strong>Step 2:</strong> Linear transform:</p>
+
+    $$
+    h_i' = W h_i^n, \quad W \in \mathbb{R}^{F \times F}
+    $$
+
+    <p><strong>Step 3:</strong> Pre-attention coefficients:</p>
+
+    $$
+    e_{ij} = \text{LeakyReLU}(\vec{a}^\top [W h_i \| W h_j])
+    $$
+
+    <p>where $\|$ denotes concatenation.</p>
+
+    <p><strong>Step 4:</strong> Attention mechanism (softmax normalization):</p>
+
+    $$
+    \alpha_{ij} = \frac{\exp(e_{ij})}{\sum_{k \sim i} \exp(e_{ik})}
+    $$
+
+    <p><strong>Step 5:</strong> Aggregate:</p>
+
+    $$
+    h^{n+1} = \sigma\left( \sum_{j \sim i} \alpha_{ij} W h_j^n \right)
+    $$
+
+    <h3>5.2 Problems with GATs</h3>
+
+    <p><strong>Important Notes:</strong></p>
+    <ul>
+        <li>GATs are <strong>notoriously hard to train deep</strong> due to:
+            <ul>
+                <li><strong>Over-squashing:</strong> Information bottleneck in long-range propagation</li>
+                <li><strong>Over-smoothing:</strong> Node features become indistinguishable after many layers</li>
+            </ul>
+        </li>
+    </ul>
+
+    <p><strong>Critical observation:</strong> With physics ideas we'll show how to keep them stable!</p>
+
+    <h2>6. Physics-Inspired Architectures: GRAND</h2>
+
+    <h3>6.1 Graph Neural Diffusion (GRAND)</h3>
+
+    <p><strong>Key idea:</strong> Rewrite GAT update as a graph diffusion equation:</p>
+
+    $$
+    h_i^{n+1} = h_i^n + \sigma\left( \sum_{j \sim i} \alpha_{ij} (h_j^n - h_i^n) \right)
+    $$
+
+    <p>or in <strong>graph calculus</strong>:</p>
+
+    $$
+    h^{n+1} = h^n + \sigma(\delta^* \alpha \delta h^n)
+    $$
+
+    <p>where:</p>
+
+    $$
+    \langle f, \delta^* g \rangle_\alpha = \langle \delta f, g \rangle_\alpha
+    $$
+
+    <p><strong>Interpretation:</strong> View attention as inducing a <strong>weighted inner product</strong>.</p>
+
+    <h3>6.2 Formulation as Dynamical System</h3>
+
+    <p>Writing $h^{n+1} = Q^n h^n$, given graph data $D = \{x_i, y_i\}$:</p>
+
+    $$
+    \text{encoder} \to h^0 \to Q h^0 \to Q h^1 \to \cdots \to h^N \to \text{decoder}
+    $$
+
+    <p><strong>Critical observation:</strong> This is a discrete dynamical system where the graph Laplacian provides inherent stability through diffusion.</p>
+
+    <h2>7. Hamiltonian Neural Networks</h2>
+
+    <h3>7.1 Review: Hamiltonian Mechanics</h3>
+
+    <p>Recall the <strong>Hamiltonian formulation</strong>:</p>
+
+    $$
+    \frac{d}{dt} \begin{pmatrix} q \\ p \end{pmatrix} = \begin{pmatrix} 0 & I \\ -I & 0 \end{pmatrix} \begin{pmatrix} \partial_q E \\ \partial_p E \end{pmatrix}
+    $$
+
+    <p>where $E = \text{NN}(p, q)$ is the energy (learned by a neural network).</p>
+
+    <p><strong>Key property:</strong> Energy conservation:</p>
+
+    $$
+    \dot{E} = 0
+    $$
+
+    <h3>7.2 Connection to GRAND</h3>
+
+    <p><strong>Same structure as GRAND!</strong></p>
+
+    <p>For graph dynamics:</p>
+
+    $$
+    \frac{d}{dt} \begin{pmatrix} q \\ p \end{pmatrix} = \begin{pmatrix} 0 & -\delta_0^* \\ \delta_0 & 0 \end{pmatrix} \begin{pmatrix} \partial_q E \\ \partial_p E \end{pmatrix}
+    $$
+
+    <p><strong>Interpretation:</strong> The graph coboundary operators $\delta_0$ and $\delta_0^*$ play the role of symplectic structure, ensuring energy conservation exactly at the discrete level.</p>
+
+    <h3>7.3 Architecture Implications</h3>
+
+    <p>The <strong>encoder-decoder pipeline</strong>:</p>
+
+    $$
+    x \to h^0 \to Q h^0 \to Q h^1 \to \cdots \to Q h^N \to y
+    $$
+
+    <p>can be viewed as evolving a Hamiltonian system in latent space, where energy conservation provides implicit regularization.</p>
+
+    <h2>8. Double-Bracket Dynamics</h2>
+
+    <h3>8.1 Formulation</h3>
+
+    <p>Consider the dynamics:</p>
+
+    $$
+    \frac{dx}{dt} = J \nabla E - J^\top J \nabla E
+    $$
+
+    <h3>8.2 Energy Dissipation</h3>
+
+    <p>Compute the energy rate of change:</p>
+
+    $$
+    \begin{aligned}
+    \frac{dE}{dt} &= \frac{\partial E}{\partial x} \cdot \frac{dx}{dt} \\
+    &= \frac{\partial E}{\partial x}^\top J \nabla E - \frac{\partial E}{\partial x}^\top J^\top J \nabla E \\
+    &= 0 - \|\nabla E\|_{J^\top J}^2 \\
+    &\leq 0
+    \end{aligned}
+    $$
+
+    <p><strong>Key property:</strong> The first term (Hamiltonian part) conserves energy, while the second term (double-bracket part) <strong>dissipates energy</strong>.</p>
+
+    <h3>8.3 Hybrid Architecture</h3>
+
+    <p><strong>Interpretation:</strong> By combining Hamiltonian and double-bracket terms, we can design neural networks that:</p>
+    <ol>
+        <li>Preserve important conservation laws (via Hamiltonian part)</li>
+        <li>Dissipate to stable equilibria (via double-bracket part)</li>
+    </ol>
+
+    <p>This provides a principled way to build <strong>stable deep architectures</strong> with physics-inspired inductive biases.</p>
+
+    <h3>8.4 Network Pipeline</h3>
+
+    $$
+    x \to \text{encoder} \to h^0 \to Q^0 h^0 \to \cdots \to h^N \to \text{decoder} \to y
+    $$
+
+    <p>where each $Q^k$ implements either:</p>
+    <ul>
+        <li>Hamiltonian dynamics (energy-preserving)</li>
+        <li>Double-bracket dynamics (energy-dissipating)</li>
+        <li>A learned combination of both</li>
+    </ul>
+
+    <hr>
+
+    <div class="summary-box">
+        <h2>Summary</h2>
+        
+        <p>This lecture covered:</p>
+        
+        <ol>
+            <li><strong>Conditional neural fields</strong> for operator learning</li>
+            <li><strong>Attention mechanisms</strong> as soft dictionary lookups</li>
+            <li><strong>Multi-head attention</strong> for learning diverse feature representations</li>
+            <li><strong>Dropout</strong> regularization for preventing overfitting</li>
+            <li><strong>Graph Attention Networks (GATs)</strong> and their limitations</li>
+            <li><strong>GRAND architecture</strong> using graph diffusion</li>
+            <li><strong>Hamiltonian neural networks</strong> with energy conservation</li>
+            <li><strong>Double-bracket dynamics</strong> for controlled energy dissipation</li>
+        </ol>
+        
+        <p><strong>Key Takeaway:</strong> Attention mechanisms can be viewed as learned finite element basis functions, generalizing interpolation from geometry to data. Graph attention networks implicitly define weighted graph Laplacians, connecting to diffusion equations and Hamiltonian mechanics. By recognizing these connections, we can design physics-inspired architectures that combine the expressiveness of modern deep learning with the stability and interpretability of classical numerical methods. The double-bracket formulation $\dot{x} = J \nabla E - J^\top J \nabla E$ provides a unified framework for energy-preserving and energy-dissipating dynamics, enabling neural networks that respect physical conservation laws while achieving stable training and generalization.</p>
+    </div>
+    
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+</body>
+</html>

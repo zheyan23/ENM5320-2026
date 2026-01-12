@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 11: Stochastic Differential Equations and Probabilistic Learning - ENM 5320</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        :root {
+            --penn-blue: #011F5B;
+            --penn-red: #990000;
+            --accent-blue: #82AFD3;
+            --light-bg: #F8F9FA;
+        }
+        body {
+            font-family: 'Georgia', serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: var(--penn-blue);
+            font-size: 2.2em;
+            border-bottom: 3px solid var(--penn-red);
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: var(--penn-blue);
+            margin-top: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: var(--penn-red);
+            margin-top: 20px;
+        }
+        .definition, .theorem-box, .example-box, .summary-box {
+            background: var(--light-bg);
+            border-left: 4px solid var(--penn-blue);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .back-link {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: var(--penn-blue);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-link:hover {
+            background: var(--penn-red);
+        }
+        strong {
+            color: var(--penn-blue);
+        }
+        p {
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+        ul, ol {
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .katex-display {
+            margin: 1.5em 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+    
+    <h1>Lecture 11: Stochastic Differential Equations and Probabilistic Learning</h1>
+    
+    <p><strong>Date:</strong> February 26, 2025</p>
+    <p><strong>Topics Covered:</strong> Integrating probability into learned models, stochastic dynamics, maximum likelihood estimation (MLE), Markov processes, Euler-Maruyama integration, metriplectic/GENERIC formalism</p>
+
+    <h2>0. Overview</h2>
+
+    <p>Up until now, our focus has been on deterministic systems governed by variational principles and Hamiltonian mechanics. However, real-world physical systems invariably involve <strong>uncertainty</strong>: sensor noise, incomplete physics descriptions, and stochastic forcing all require us to think probabilistically. This lecture marks a crucial expansion of our framework to handle <strong>stochastic differential equations (SDEs)</strong>, which combine deterministic dynamics with random processes.</p>
+
+    <p>The motivation for this probabilistic perspective is threefold. First, tracking a single point trajectory is often insufficient—we need to track entire <strong>probability distributions</strong> that evolve under both deterministic forces and random fluctuations. Second, even when our measurements are noisy or our physics model is incomplete, we can still learn meaningful dynamics by fitting probabilistic models to data using <strong>maximum likelihood estimation</strong>. Third, and perhaps most surprisingly, even in the absence of noise, training models in a probabilistic context often provides better regularization and more robust learning.</p>
+
+    <p>We'll build our SDE framework systematically, starting with a probability review, then introducing the <strong>Wiener process</strong> (Brownian motion) and showing how to integrate it using the <strong>Euler-Maruyama method</strong>. Using <strong>Markov process</strong> structure, we'll derive a negative log-likelihood (NLL) loss function that enables us to fit learnable SDE models to time series data. Finally, we'll see an elegant example of structure-preserving SDEs through the <strong>metriplectic (GENERIC) formalism</strong>, which simultaneously conserves energy while increasing entropy—a beautiful generalization of Hamiltonian mechanics to irreversible thermodynamic systems.</p>
+
+    <h2>1. Motivation for Probabilistic Dynamics</h2>
+
+    <h3>1.1 From Point Tracking to Probability Tracking</h3>
+
+    <p>Instead of tracking a single point trajectory, we often need to track a <strong>"blob" of probability</strong> that evolves over time. This arises naturally in several contexts:</p>
+
+    <p><strong>Aleatoric Uncertainty:</strong></p>
+    <ul>
+        <li><strong>Noisy observations</strong> from sensors with measurement error</li>
+        <li><strong>Noisy physics</strong> due to unmodeled random forcing</li>
+    </ul>
+
+    <p><strong>Epistemic Uncertainty:</strong></p>
+    <ul>
+        <li><strong>Incomplete description of physics</strong> (e.g., missing scales or interactions)</li>
+        <li>Model uncertainty about functional forms</li>
+    </ul>
+
+    <h3>1.2 Probabilistic Regularization</h3>
+
+    <p><strong>Even without noise, training a model in a probabilistic context is often easier.</strong> Probabilistic objectives provide natural regularization:</p>
+    <ul>
+        <li><strong>Variance terms</strong> penalize overconfident predictions</li>
+        <li><strong>Log-likelihood</strong> naturally balances fit quality against model complexity</li>
+        <li><strong>Bayesian priors</strong> encode structural assumptions</li>
+    </ul>
+
+    <h3>1.3 Recommended References for Probability</h3>
+
+    <p><strong>For rigorous foundations:</strong></p>
+    <ul>
+        <li><em>Probability Essentials</em> by Jacod & Protter → Short paperback, rigorous but quick definitions</li>
+        <li><em>Probability: Theory and Examples</em> by Durrett → Measure-theoretic; heavy to get started from</li>
+    </ul>
+
+    <p><strong>For machine learning perspective:</strong></p>
+    <ul>
+        <li><em>Machine Learning: A Probabilistic Perspective</em> by Kevin Murphy → Accessible, lots of background and follow-up refs</li>
+    </ul>
+
+    <p><strong>For stochastic integration:</strong></p>
+    <ul>
+        <li><em>Introduction to Stochastic Integration</em> by Kuo</li>
+    </ul>
+
+    <h2>2. Probability Review</h2>
+
+    <h3>2.1 Random Variables and Distributions</h3>
+
+    <div class="definition">
+        <p><strong>Definition:</strong> A <strong>continuous random variable</strong> $\bar{X}$ takes a random value $x \in \mathbb{R}$.</p>
+
+        <p><strong>Cumulative distribution function (CDF)</strong> defines probability over a range of values:</p>
+        $$F_{\bar{X}}(x) = \mathbb{P}(\bar{X} \leq x)$$
+
+        <p>If the CDF is differentiable, we define the <strong>probability density function (PDF)</strong>:</p>
+        $$f_{\bar{X}}(x) = \frac{d}{dx} F_{\bar{X}}(x)$$
+
+        <p>Thus:</p>
+        $$\mathbb{P}(a \leq \bar{X} \leq b) = \int_a^b f(x) \, dx = F(b) - F(a)$$
+    </div>
+
+    <h3>2.2 Joint Distributions and Conditioning</h3>
+
+    <p><strong>Joint distribution:</strong></p>
+    $$f(x_1, \ldots, x_N) = \mathbb{P}(\bar{X}_1 = x_1, \ldots, \bar{X}_N = x_N)$$
+
+    <p><strong>Marginalization</strong> (rule of total probability):</p>
+    $$f(\bar{X} = x) = \sum_y f(\bar{X} = x, \bar{Y} = y)$$
+    <p>or in continuous case: $f(x) = \int f(x, y) \, dy$</p>
+
+    <p><strong>Conditional distribution:</strong></p>
+    $$f(\bar{Y} = y \mid \bar{X} = x) = \frac{f(\bar{X} = x, \bar{Y} = y)}{f(\bar{X} = x)}$$
+
+    <p><strong>Product rule:</strong></p>
+    $$f(x, y) = f(x \mid y) \cdot f(y)$$
+
+    <div class="definition">
+        <p><strong>Probability chain rule:</strong></p>
+        $$\begin{aligned}
+        f(x_1, \ldots, x_N) &= f(x_2, \ldots, x_N \mid x_1) f(x_1) \\
+        &= f(x_3, \ldots, x_N \mid x_1, x_2) f(x_2 \mid x_1) f(x_1) \\
+        &= f(x_N \mid x_1, \ldots, x_{N-1}) \cdots f(x_2 \mid x_1) f(x_1)
+        \end{aligned}$$
+    </div>
+
+    <h3>2.3 Independence</h3>
+
+    <p><strong>Marginal independence:</strong> $\bar{X} \perp \bar{Y}$ if:</p>
+    $$f(x, y) = f(x) f(y)$$
+
+    <p>In general for $N$ variables:</p>
+    $$f(x_1, \ldots, x_N) = \prod_{i=1}^N f(x_i)$$
+
+    <p><strong>Conditional independence:</strong> $\bar{X} \perp \bar{Y} \mid \bar{Z}$ if:</p>
+    $$f(x, y \mid z) = f(x \mid z) f(y \mid z)$$
+
+    <h2>3. Fitting Distributions to Data with Maximum Likelihood</h2>
+
+    <h3>3.1 Maximum Likelihood Estimation (MLE)</h3>
+
+    <p>Given a dataset consisting of observations of a random variable $\bar{X}$:</p>
+    $$\mathcal{D} = \{x_i\}_{i=1}^{N_{\text{data}}}$$
+
+    <div class="definition">
+        <p><strong>Define the likelihood</strong> by evaluating the parameterized joint distribution:</p>
+        $$\mathcal{L}(\theta) = f(x_1, \ldots, x_{N_{\text{data}}} \mid \theta)$$
+
+        <p><strong>Fit the distribution to data</strong> by solving:</p>
+        $$\theta^* = \arg\min_\theta \underbrace{-\log \mathcal{L}(x_1, \ldots, x_{N_{\text{data}}} \mid \theta)}_{\text{NLL (Negative Log-Likelihood)}}$$
+    </div>
+
+    <p><strong>Why negative log-likelihood?</strong></p>
+    <ul>
+        <li>Converts products to sums (easier optimization)</li>
+        <li>Avoids numerical underflow from small probabilities</li>
+        <li>Equivalent to minimizing KL divergence from data distribution</li>
+    </ul>
+
+    <h3>3.2 Example: Fitting a Gaussian Distribution</h3>
+
+    <div class="example-box">
+        <p><strong>Step 1:</strong> Assume independent data:</p>
+        $$f(x_1, \ldots, x_N \mid \theta) = \prod_{i=1}^N f(x_i \mid \theta)$$
+
+        <p><strong>Step 2:</strong> Choose marginal distribution as Gaussian:</p>
+        $$f(x; \theta) = \mathcal{N}(x; \mu, \sigma^2) \quad \text{where} \quad \theta = \{\mu, \sigma^2\}$$
+        $$\mathcal{N}(x; \mu, \sigma^2) = \frac{1}{\sqrt{2\pi \sigma^2}} \exp\left[-\frac{1}{2}\left(\frac{x - \mu}{\sigma}\right)^2\right]$$
+
+        <p><strong>Step 3:</strong> Compute log-likelihood:</p>
+        $$\log \mathcal{N} = -C - \frac{1}{2} \log \sigma^2 - \frac{1}{2}\left(\frac{x - \mu}{\sigma}\right)^2$$
+
+        <p><strong>Step 4:</strong> Write negative log-likelihood:</p>
+        $$\text{NLL} = \sum_{i=1}^N \frac{1}{2} \log \sigma^2 + \frac{1}{2}\left(\frac{x_i - \mu}{\sigma}\right)^2$$
+
+        <p><strong>Step 5:</strong> Solve for $\mu^*$ and $\sigma^{2*}$:</p>
+        $$\boxed{\mu^* = \frac{1}{N}\sum_{i=1}^N x_i}$$
+        $$\boxed{\sigma^{2*} = \frac{1}{N}\sum_{i=1}^N (x_i - \mu)^2}$$
+
+        <p><strong>Result:</strong> MLE recovers the sample mean and sample variance.</p>
+    </div>
+
+    <h2>4. Stochastic Differential Equations</h2>
+
+    <h3>4.1 From ODEs to SDEs</h3>
+
+    <p>To account for random forcing/physics, we'll expand our notion of ODEs.</p>
+
+    <p><strong>Standard ODE notation:</strong></p>
+    $$\frac{dx}{dt} = f(x, t)$$
+
+    <p><strong>Integral form:</strong></p>
+    $$\int_0^t dx = \int_0^t f(x, \tau) \, d\tau$$
+
+    <p><strong>Shorthand notation</strong> (omitting limits):</p>
+    $$dx_t = f(x_t, t) \, dt \quad \text{where} \quad x_t = x(t)$$
+
+    <p><strong>Critical observation:</strong> We will see that random forcing leads to solutions which <strong>aren't differentiable</strong>, so it's necessary to interpret them in the integral sense.</p>
+
+    <h3>4.2 SDE Formulation</h3>
+
+    <div class="definition">
+        <p>To account for stochastic terms, we consider an <strong>SDE</strong>:</p>
+        $$dx_t = \underbrace{f(x_t, t)}_{\text{drift}} \, dt + \underbrace{g(x_t, t) \, dW_t}_{\text{diffusion (stochastic process)}}$$
+
+        <p>where:</p>
+        <ul>
+            <li>$f(x_t, t)$ is the <strong>drift</strong> (deterministic part)</li>
+            <li>$g(x_t, t)$ is the <strong>diffusion coefficient</strong></li>
+            <li>$W_t$ is a <strong>Wiener process</strong> (Brownian motion)</li>
+        </ul>
+    </div>
+
+    <p><strong>We need to define</strong> $dW_t$ and how to integrate it.</p>
+
+    <h2>5. The Wiener Process</h2>
+
+    <h3>5.1 Definition</h3>
+
+    <div class="definition">
+        <p>We'll consider the <strong>Wiener process</strong> $W_t = \int_0^t dW_\tau$ defined via:</p>
+
+        <ol>
+            <li><strong>Initial condition:</strong> $W_0 = 0$</li>
+
+            <li><strong>Independent increments:</strong> For $t > 0, u \geq 0$, the increment $W_{t+u} - W_t$ is independent of $W_s$ for any $s \leq t$</li>
+
+            <li><strong>Gaussian increments</strong> with variance equal to time increment:
+                $$W_{t+u} - W_t \sim \mathcal{N}(0, u)$$
+            </li>
+
+            <li><strong>Continuity:</strong> $W_t$ is continuous (almost surely)</li>
+        </ol>
+    </div>
+
+    <h3>5.2 Construction</h3>
+
+    <p>Many different constructions of $W_t$ satisfy these properties.</p>
+
+    <p><strong>Example construction:</strong> Let $\xi_1, \xi_2, \ldots$ be IID random variables with $\mathbb{E}[\xi_i] = 0$ and $\operatorname{Var}[\xi_i] = 1$. Define:</p>
+    $$W_n(t) = \frac{1}{\sqrt{n}} \sum_{1 \leq k \leq nt} \xi_k$$
+
+    <p>Then by the <strong>central limit theorem</strong>:</p>
+    $$\lim_{n \to \infty} W_n(t) = W_t$$
+
+    <h3>5.3 Properties</h3>
+
+    <p>We can prove that with probability 1:</p>
+    <ol>
+        <li>$W_t$ is <strong>continuous</strong></li>
+        <li>$W_t$ is <strong>nowhere differentiable</strong></li>
+    </ol>
+
+    <p><strong>This non-differentiability poses challenges for standard calculus!</strong></p>
+
+    <h2>6. Integrating Against the Wiener Process</h2>
+
+    <h3>6.1 Riemann-Like Construction</h3>
+
+    <p>To integrate against the Wiener process, consider the Riemann-like sum:</p>
+    $$\int_0^t g(x_\tau, \tau) \, dW_\tau = \lim_{\Delta t \to 0} \sum_{i=0}^{n-1} g(x_{t_i}, t_i) (W_{t_{i+1}} - W_{t_i})$$
+
+    <p><strong>Problem:</strong> This leads to many <strong>pathological issues</strong> that violate usual assumptions from standard calculus.</p>
+
+    <p>In a probability class, we would get into details about <strong>Itô calculus</strong> vs <strong>Stratonovich calculus</strong>—but this intuition is enough to pose a simple scheme for solving SDEs in our learning problems.</p>
+
+    <h2>7. Euler-Maruyama Method</h2>
+
+    <h3>7.1 Discretization Scheme</h3>
+
+    <div class="theorem-box">
+        <p>Given the SDE:</p>
+        $$dx_t = f(x_t, t) \, dt + g(x_t, t) \, dW_t$$
+
+        <p><strong>Solve for</strong> $x_{t_n} = x(t = nk)$ for $n = 0, 1, 2, \ldots$:</p>
+        $$\boxed{x_{n+1} = x_n + k f(x_{t_n}, t_n) + \xi_n g(x_{t_n}, t_n)}$$
+
+        <p>where:</p>
+        $$\xi_n \sim \mathcal{N}(0, k)$$
+    </div>
+
+    <p><strong>Note:</strong> Some better integrators exist (see <strong>Milstein's method</strong>) but require a deeper dive into stochastic calculus.</p>
+
+    <h2>8. Markov Processes and MLE for SDEs</h2>
+
+    <h3>8.1 Markov Process Definition</h3>
+
+    <div class="definition">
+        <p><strong>Definition:</strong> For a $K$-th order <strong>Markov process</strong>, given a discrete time series $\vec{y} = \langle y_0, y_1, \ldots, y_N \rangle$:</p>
+        $$P(y_i \mid y_0, \ldots, y_{i-1}) = P(y_i \mid y_{i-1}, \ldots, y_{i-K})$$
+
+        <p><strong>This means you only need to model the last $K$ timesteps</strong> → this is like a multi-step integrator with $K$ steps.</p>
+    </div>
+
+    <p><strong>Euler-Maruyama is a Markov process with $K = 1$:</strong></p>
+    $$P(x_{n+1} \mid x_n) = \mathcal{N}\left(x_n + k f(x_n, t_n), \, k g(x_n, t_n)^2\right)$$
+
+    <h3>8.2 Proof of Transition Distribution</h3>
+
+    <div class="theorem-box">
+        <p><strong>Claim:</strong> If $X \sim \mathcal{N}(\mu, \sigma^2)$, then:</p>
+        $$AX + b \sim \mathcal{N}(A\mu + b, \, A^2 \sigma^2)$$
+
+        <p><strong>For Euler-Maruyama:</strong></p>
+        $$x_{n+1} = x_n + kf_n + g_n \xi_n$$
+        <p>where $\xi_n \sim \mathcal{N}(0, k)$.</p>
+
+        <p><strong>Identify:</strong></p>
+        <ul>
+            <li>$b = x_n + kf_n$</li>
+            <li>$A = g_n$</li>
+            <li>$\sigma^2 = k$</li>
+        </ul>
+
+        <p>Therefore:</p>
+        $$x_{n+1} \sim \mathcal{N}(x_n + kf_n, \, k g_n^2) \quad \checkmark$$
+    </div>
+
+    <h3>8.3 Deriving the NLL for Trainable SDEs</h3>
+
+    <div class="theorem-box">
+        <p><strong>Step 1:</strong> Apply chain rule using Markov property:</p>
+        $$\begin{aligned}
+        -\log p(y_1, \ldots, y_N) &= -\log \left[ p(y_N \mid y_{N-1}) p(y_{N-1} \mid y_{N-2}) \cdots p(y_1 \mid y_0) \right] \\
+        &= -\sum_{i=1}^N \log p(y_i \mid y_{i-1})
+        \end{aligned}$$
+
+        <p><strong>Step 2:</strong> Substitute Gaussian transition probabilities:</p>
+        $$= -\sum_{i=1}^N \log \mathcal{N}(x_i + kf_i, \, kg_i^2)$$
+
+        <p><strong>Step 3:</strong> Expand log-Gaussian:</p>
+        $$\text{NLL} = C + \sum_{i=1}^N \frac{1}{2} \log(kg_i^2) + \frac{1}{2} \frac{(x_{i+1} - x_i - kf_i)^2}{kg_i^2}$$
+    </div>
+
+    <h3>8.4 Learning SDEs from Data</h3>
+
+    <p>If we replace $f(x, t)$ with $f(x, t; \theta)$ and $g(x, t)$ with $g(x, t; \theta)$ (i.e., <strong>make the SDE trainable</strong>), we can solve:</p>
+    $$\boxed{\min_\theta \sum_{i=1}^N \log(kg_{i,\theta}^2) + \frac{(x_{i+1} - x_i - kf_{i,\theta})^2}{kg_{i,\theta}^2}}$$
+
+    <p><strong>This provides a principled way to learn stochastic dynamics from noisy time series data!</strong></p>
+
+    <h2>9. Example: Structure-Preserving SDEs</h2>
+
+    <h3>9.1 Metriplectic / GENERIC Formalism</h3>
+
+    <div class="definition">
+        <p>The <strong>metriplectic</strong> (also called <strong>GENERIC</strong>: General Equation for Non-Equilibrium Reversible-Irreversible Coupling) formalism provides a structure-preserving SDE framework:</p>
+        $$\boxed{dx_t = \left(L \partial_x E + M \partial_x S + K_B \partial_x \cdot M\right) dt + \sqrt{2K_B M} \, dW_t}$$
+
+        <p>where:</p>
+        <ul>
+            <li>$E$ = <strong>energy</strong> (conserved functional)</li>
+            <li>$S$ = <strong>entropy</strong> (non-decreasing functional)</li>
+            <li>$L = -L^T$ = <strong>Poisson operator</strong> (skew-symmetric)</li>
+            <li>$M = M^T \geq 0$ = <strong>friction operator</strong> (symmetric, positive semi-definite)</li>
+            <li>$K_B$ = <strong>Boltzmann constant</strong></li>
+        </ul>
+
+        <p><strong>Degeneracy conditions:</strong></p>
+        $$\begin{aligned}
+        L \partial_x S &= 0 \\
+        M \partial_x E &= 0
+        \end{aligned}$$
+    </div>
+
+    <h3>9.2 Deterministic Limit ($K_B \to 0$)</h3>
+
+    <p>In the deterministic limit, we have:</p>
+    $$dx_t = \left(L \partial_x E + M \partial_x S\right) dt$$
+
+    <h4>Theorem 1: Energy is Conserved</h4>
+
+    <div class="theorem-box">
+        <p><strong>Proof:</strong></p>
+        $$\begin{aligned}
+        \frac{dE}{dt} &= \partial_x E^\top \frac{dx}{dt} \\
+        &= \partial_x E^\top (L \partial_x E + M \partial_x S) \\
+        &= \underbrace{\partial_x E^\top L \partial_x E}_{= 0 \text{ (skew-symmetry)}} + \underbrace{\partial_x E^\top M \partial_x S}_{= 0 \text{ (degeneracy)}} \\
+        &= 0
+        \end{aligned}$$
+
+        <p>Therefore: $\frac{dE}{dt} = 0$ $\quad \checkmark$</p>
+    </div>
+
+    <h4>Theorem 2: Entropy is Non-Decreasing</h4>
+
+    <div class="theorem-box">
+        <p><strong>Proof:</strong></p>
+        $$\begin{aligned}
+        \frac{dS}{dt} &= \partial_x S^\top \frac{dx}{dt} \\
+        &= \partial_x S^\top (L \partial_x E + M \partial_x S) \\
+        &= \underbrace{\partial_x S^\top L \partial_x E}_{= 0 \text{ (degeneracy)}} + \underbrace{\partial_x S^\top M \partial_x S}_{\geq 0 \text{ (positive semi-definite)}} \\
+        &\geq 0
+        \end{aligned}$$
+
+        <p>Therefore: $\frac{dS}{dt} \geq 0$ $\quad \checkmark$</p>
+    </div>
+
+    <p><strong>Remark:</strong> Metriplectic structure is therefore a <strong>generalization of Hamiltonian mechanics</strong>, with the degeneracy conditions preventing cross-terms between reversible ($L$) and irreversible ($M$) parts. This allows simultaneous treatment of conservative and dissipative dynamics in a geometrically consistent framework.</p>
+
+    <h2>Summary</h2>
+
+    <div class="summary-box">
+        <p>This lecture covered:</p>
+
+        <ol>
+            <li><strong>Motivation</strong> for probabilistic dynamics: tracking distributions, handling uncertainty</li>
+            <li><strong>Probability review</strong>: random variables, distributions, conditioning, independence</li>
+            <li><strong>Maximum likelihood estimation (MLE)</strong> for fitting distributions to data</li>
+            <li><strong>Stochastic differential equations (SDEs)</strong> with drift and diffusion</li>
+            <li><strong>Wiener process</strong> definition and properties (continuous but nowhere differentiable)</li>
+            <li><strong>Euler-Maruyama method</strong> for discretizing SDEs</li>
+            <li><strong>Markov processes</strong> and deriving NLL loss for learning SDEs from data</li>
+            <li><strong>Metriplectic/GENERIC formalism</strong> as structure-preserving SDEs with energy conservation and entropy increase</li>
+        </ol>
+
+        <p><strong>Key Takeaway:</strong> Stochastic differential equations provide a principled framework for learning dynamics from noisy data while preserving physical structure. By formulating SDEs with trainable drift and diffusion, we can fit probabilistic models using maximum likelihood estimation. The Euler-Maruyama discretization, combined with the Markov property, yields a tractable negative log-likelihood loss. For physics-informed learning, the metriplectic formalism shows how to design SDEs that simultaneously conserve energy and satisfy the second law of thermodynamics—a beautiful generalization that unifies reversible Hamiltonian dynamics with irreversible dissipation.</p>
+    </div>
+    
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>

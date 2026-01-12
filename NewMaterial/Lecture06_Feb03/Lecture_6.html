@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 6: Constrained Optimization and Polynomial Reproduction for Learning Finite Difference Stencils - ENM5320</title>
+    
+    <!-- KaTeX CSS and JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+        }
+
+        h1 {
+            color: #011F5B;
+            border-bottom: 3px solid #990000;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+
+        h2 {
+            color: #011F5B;
+            margin-top: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+
+        h3 {
+            color: #011F5B;
+            margin-top: 20px;
+        }
+
+        h4 {
+            color: #011F5B;
+            margin-top: 15px;
+        }
+
+        p {
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+
+        ul, ol {
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .katex-display {
+            margin: 1.5em 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .definition {
+            background: #f8f9fa;
+            border-left: 4px solid #82AFD3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .summary-box {
+            background: #fff3cd;
+            border: 1px solid #F2C100;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .example-box {
+            background: #e8f4f8;
+            border-left: 4px solid #82AFD3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .theorem-box {
+            background: #f0f0f0;
+            border: 2px solid #011F5B;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        strong {
+            color: #011F5B;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #82AFD3;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-link">← Back to Course Schedule</a>
+    
+    <h1>Lecture 6: Constrained Optimization and Polynomial Reproduction for Learning Finite Difference Stencils</h1>
+
+    <p><strong>Date:</strong> February 5, 2025</p>
+    <p><strong>Topics:</strong> Constrained optimization, polynomial reproduction, moving least squares, Schur complement method</p>
+
+    <hr>
+
+    <h2>0. Overview</h2>
+    <p>This lecture establishes the mathematical foundations for learning finite difference (FD) stencils from data while enforcing physical and mathematical constraints. We introduce <strong>constrained optimization</strong> as a central tool for ensuring that learned numerical methods satisfy desired properties such as conservation laws, consistency, and stability.</p>
+
+    <p>The lecture connects three critical ideas: (1) <strong>equality-constrained quadratic programming</strong> using Lagrange multipliers and the Schur complement, (2) strategies for training FD stencils from noisy data (penalty methods, reduced-space optimization, and Lagrange multiplier methods), and (3) <strong>polynomial reproduction</strong> as a systematic framework for constructing high-quality stencils that exactly replicate polynomial solutions. The polynomial reproduction framework builds on moving least squares (MLS) and provides a dual optimization perspective: we seek minimal-norm stencil weights that satisfy reproduction constraints.</p>
+
+    <p>This material bridges classical numerical analysis (consistency, stability, convergence) with modern machine learning (data-driven stencil discovery, constrained neural networks). Understanding these techniques is essential for designing <strong>physics-informed neural networks</strong> and learning numerical schemes that respect fundamental physical principles like energy conservation and translation invariance.</p>
+
+    <hr>
+
+    <h2>1. Constrained Optimization Framework</h2>
+
+    <h3>1.1 General Constrained Optimization Problem</h3>
+    <p>Our main tool will be <strong>constrained optimization</strong>:</p>
+
+    $$\begin{aligned}
+    \min_{\theta} \quad & F(x; \theta) \\
+    \text{s.t.} \quad & G(x; \theta) = 0
+    \end{aligned}$$
+
+    <p><strong>Typical use cases:</strong></p>
+    <ul>
+        <li><strong>Physics-constrained optimization (PDE-constrained optimization):</strong> \(F\) is a reconstruction loss, \(G\) encodes physics constraints (e.g., satisfying a PDE)</li>
+        <li><strong>Feasibility problems:</strong> \(F\) is arbitrary, \(G\) represents properties we actually care about (e.g., conservation laws, stability conditions)</li>
+    </ul>
+
+    <h3>1.2 Equality Constrained Quadratic Programming</h3>
+    <p>Consider the canonical problem:</p>
+
+    $$\begin{aligned}
+    \min_{x} \quad & \frac{1}{2} x^\top A x + b^\top x + c \\
+    \text{s.t.} \quad & Bx = d
+    \end{aligned}$$
+
+    <p><strong>Note:</strong> For nonlinear problems, replace \(A\) with the Hessian and \(B\) with the Jacobian.</p>
+
+    <p><strong>Solution via Lagrange multipliers:</strong></p>
+    <p>To solve, introduce Lagrange multiplier \(\lambda\) and form the Lagrangian:</p>
+
+    $$\mathcal{L}(x, \lambda) = \frac{1}{2} x^\top A x + b^\top x + c + \lambda^\top (Bx - d)$$
+
+    <p>The <strong>Karush-Kuhn-Tucker (KKT) conditions</strong> state that the minimizer satisfies:</p>
+
+    $$\begin{aligned}
+    \nabla_x \mathcal{L} &= 0 \\
+    \nabla_\lambda \mathcal{L} &= 0
+    \end{aligned}$$
+
+    <p>Explicitly:</p>
+
+    $$\begin{aligned}
+    \nabla_\lambda \mathcal{L} &= Bx - d = 0 \\
+    \nabla_x \mathcal{L} &= Ax + b + B^\top \lambda = 0
+    \end{aligned}$$
+
+    <p>This yields the <strong>saddle point problem:</strong></p>
+
+    $$\begin{pmatrix}
+    A & B^\top \\
+    B & 0
+    \end{pmatrix}
+    \begin{pmatrix}
+    x \\
+    \lambda
+    \end{pmatrix}
+    =
+    \begin{pmatrix}
+    -b \\
+    d
+    \end{pmatrix}
+    \tag{KKT}$$
+
+    <h3>1.3 Schur Complement Solution</h3>
+    <p><strong>Step 1:</strong> Multiply the top row of (KKT) by \(BA^{-1}\):</p>
+
+    $$BA^{-1}Ax + BA^{-1}B^\top \lambda = -BA^{-1}b$$
+
+    <p>This simplifies to:</p>
+
+    $$Bx + BA^{-1}B^\top \lambda = -BA^{-1}b$$
+
+    <p><strong>Step 2:</strong> Extract the constraint \(Bx = d\) from the second row of (KKT) and substitute:</p>
+
+    $$BA^{-1}B^\top \lambda = -d - BA^{-1}b$$
+
+    <p><strong>Step 3:</strong> Define the <strong>Schur complement</strong> \(S = BA^{-1}B^\top\) and solve:</p>
+
+    $$\begin{aligned}
+    \lambda &= -S^{-1}(d + BA^{-1}b) \\
+    x &= A^{-1}(-B^\top \lambda - b)
+    \end{aligned}$$
+
+    <p><strong>Important:</strong> We will use this Schur complement formula repeatedly as a tool to enforce properties we desire as equality constraints in stencil learning.</p>
+
+    <hr>
+
+    <h2>2. Training Strategies for Data-Driven Stencil Learning</h2>
+
+    <h3>2.1 A Note on Force Matching vs. Solution Fitting</h3>
+    <p><strong>Force matching (derivative matching):</strong></p>
+    <p>In homework problems, we often match derivatives (also called <strong>force matching</strong> in molecular dynamics):</p>
+
+    $$\mathcal{L} = \left\| \frac{\hat{u}_j^{n+1} - \hat{u}_j^n}{k} + \frac{1}{h^{|\alpha|}} \sum_{k=-\alpha}^{\beta} S_{j+k} u_{j+k}^n \right\|^2$$
+
+    <p>to approximate a differential operator \(D^\alpha\).</p>
+
+    <p><strong>Problem:</strong> This approach is prone to overfitting for noisy realistic data.</p>
+
+    <p><strong>Mitigation strategies:</strong></p>
+    <ul>
+        <li>Explicitly model noise as maximum likelihood estimation (MLE)</li>
+        <li>Tikhonov regularization / weight decay (we'll discuss these later)</li>
+        <li>Filtering / preprocessing (later topic)</li>
+        <li><strong>Better approach:</strong> Fit to the solution itself rather than its derivatives</li>
+    </ul>
+
+    <h3>2.2 Three Approaches to Constrained Fitting</h3>
+    <p>Define the <strong>reconstruction loss</strong> and <strong>physics residual:</strong></p>
+
+    $$\begin{aligned}
+    \mathcal{L}_R &= \frac{1}{2} \sum_{n,j} |u_j^n - \hat{u}_j^n|^2 \\
+    r_{n,j} &= u_j^{n+1} - u_j^n - k D_\theta^\alpha u_j^n
+    \end{aligned}$$
+
+    <p>where \(D_\theta^\alpha\) is a <strong>parameterized stencil</strong>.</p>
+
+    <p>We pose the constrained fit to the solution:</p>
+
+    $$\begin{aligned}
+    \min_{u_j^n, \theta} \quad & \mathcal{L}_R \\
+    \text{s.t.} \quad & r_{n,j} = 0 \quad \forall n, j
+    \end{aligned}$$
+
+    <h4>Method 1: Penalty Method (Worst!)</h4>
+
+    $$\min_{u_j^n, \theta} \mathcal{L}_R + \lambda \sum_{n,j} r_{n,j}^2$$
+
+    <p><strong>Drawbacks:</strong></p>
+    <ul>
+        <li>Take larger penalty parameter \(\lambda\); for large \(\lambda\), \(r_{n,j}\) is small</li>
+        <li>No way to pick \(\lambda\) a priori (too big → unstable, too small → large error)</li>
+        <li>Small residuals don't guarantee small solution errors (recall the \(O(k^2)\) errors we saw in explicit/Euler)</li>
+    </ul>
+
+    <h4>Method 2: Reduced Space Constrained Optimization</h4>
+    <p>Substitute the residual constraint back into \(\mathcal{L}_R\) to optimize directly over the space of FD solutions.</p>
+
+    <p>If \(u_j^n = Q(u_j^{n-1})\) is the (potentially nonlinear) update operator:</p>
+
+    $$\mathcal{L} = \frac{1}{2} \sum_{n,j} \left| Q(u_j^{n-1}) \cdots Q(u_j^0) u_j^0 - \hat{u}_j^n \right|^2$$
+
+    <p><strong>Challenge:</strong> For nonlinear/implicit schemes, need to backpropagate through a linear solve or Newton/iterative nonlinear solve.</p>
+
+    <h4>Method 3: Lagrange Multipliers (Recommended)</h4>
+
+    $$\min_{u^n, r^n, \theta} \frac{1}{2} \sum_{n,j} |u_j^n - \hat{u}_j^n|^2 + \sum_n \lambda_n(r_{n,j})$$
+
+    <p><strong>Process:</strong> For iterations \(1, \ldots, \#\):</p>
+    <ol>
+        <li>\(\nabla_u \mathcal{L} = 0 \Rightarrow\) Solve forward problem</li>
+        <li>\(\nabla_\lambda \mathcal{L} = 0 \Rightarrow\) Solve adjoint problem:
+            $$
+            (J_{ru}(r))^\top \lambda = -(u_j^n - \hat{u}_j^n)
+            $$
+        </li>
+        <li>Update \(\theta\) with gradient optimization using current guess for \(u, \lambda\)</li>
+    </ol>
+
+    <p><strong>Advantage:</strong> Backpropagation doesn't need to go through forward + adjoint solve; best for nonlinear/implicit schemes.</p>
+
+    <p><strong>Note:</strong> For linear problems, methods (2) and (3) are equivalent.</p>
+
+    <h3>2.3 Mini-Batching</h3>
+    <p><strong>Important considerations:</strong></p>
+    <ul>
+        <li>These are large gradient calculations</li>
+        <li>Typically our dataset consists of many simulations</li>
+        <li>Use <strong>stochastic gradient descent (SGD)</strong></li>
+        <li>Pick random solution \(\hat{u}_{j,d}^n\) (where \(d\) indexes different simulations)</li>
+        <li>Pick subset of time series: \(u_{j,d}^n, \ldots, u_{j,d}^{n+m}\)</li>
+        <li>Train using \(\hat{u}_{j,d}\) as initial condition</li>
+    </ul>
+
+    <hr>
+
+    <h2>3. Polynomial Reproduction and Least Squares</h2>
+
+    <h3>3.1 Scattered Data and Fill Distance</h3>
+    <p>Consider points \(\bar{X} = \{x_1, \ldots, x_N\} \subseteq \Omega \subseteq \mathbb{R}^d\).</p>
+
+    <p><strong>Fill distance</strong> (characterizes scattered data):</p>
+
+    $$h_{\bar{X}, \Omega} = \sup_{x \in \Omega} \min_{j \leq N} \|x - x_j\|_2$$
+
+    <p>Interpretation: Radius of the biggest ball in \(\Omega\) without any data points in it.</p>
+
+    <p><strong>Separation distance:</strong></p>
+
+    $$q_{\bar{X}} = \frac{1}{2} \min_{i \neq j} \|x_i - x_j\|_2$$
+
+    <div class="definition">
+        <strong>Definition:</strong> Data sites are <strong>quasi-uniform</strong> (with constant \(c_{qu}\)) if:
+        $$q_{\bar{X}} \leq h_{\bar{X}, \Omega} \leq c_{qu} q_{\bar{X}}$$
+    </div>
+
+    <p><strong>For our FD stencils so far:</strong></p>
+
+    $$h_{\bar{X}, \Omega} = h, \quad q_{\bar{X}} = h \quad \Rightarrow c_{qu} = 1$$
+
+    <p>(uniform grid)</p>
+
+    <h3>3.2 Moving Least Squares (MLS)</h3>
+    <p><strong>Idea:</strong> Introduce moving least squares to generalize FDM for scattered data.</p>
+
+    <p>For \(x \in \Omega\), define \(S_{f,\bar{X}}(x) = p^*(x)\) where:</p>
+
+    $$p^* = \arg\min_{p \in \Pi_m(\mathbb{R}^d)} \sum_{i=1}^N [f(x_i) - p(x_i)]^2 \omega(x, x_i)$$
+
+    <p>where \(\Pi_m(\mathbb{R}^d)\) denotes polynomials of degree \(\leq m\) in \(\mathbb{R}^d\).</p>
+
+    <p>We'll assume \(\omega(x,y) = \Phi_\delta(x-y)\) (radial basis function kernel).</p>
+
+    <h4>Simple Example: \(m = 0\) (Constant Approximation)</h4>
+
+    $$\min_{c(x)} \sum_{i=1}^N \frac{1}{2}[f(x_i) - c(x)]^2 \Phi_\delta(x - x_i)$$
+
+    <div class="example-box">
+        <strong>Solution:</strong>
+
+        <p><strong>Step 1:</strong> Take derivative with respect to \(c(x)\) and set to zero:</p>
+
+        $$0 = \sum_{i=1}^N (f(x_i) - c(x)) \Phi_\delta(x - x_i)$$
+
+        <p><strong>Step 2:</strong> Solve for \(c(x)\):</p>
+
+        $$c(x) = \frac{\sum_i \Phi_\delta(x - x_i) f(x_i)}{\sum_i \Phi_\delta(x - x_i)}$$
+
+        <p>This recovers <strong>kernel density estimation</strong>, also known as the <strong>Shepard interpolant</strong>.</p>
+    </div>
+
+    <hr>
+
+    <h2>4. Primal and Dual Formulations of MLS</h2>
+
+    <div class="theorem-box">
+        <strong>Theorem:</strong> Solving the moving least squares problem is equivalent to solving:
+        $$\begin{aligned}
+        S_{f,\bar{X}}(x) &= \sum_i a_i^*(x) f(x_i) \\
+        a_i^* &= \arg\min \frac{1}{2} \sum_i \frac{a_i(x)^2}{\Phi_\delta(x - x_i)}
+        \end{aligned}$$
+        subject to polynomial reproduction constraints.
+    </div>
+
+    <p><strong>Remark:</strong> We can thus search for a <strong>minimal norm stencil</strong> that has reproduction properties.</p>
+
+    <h3>4.1 Proof: Setup and Notation</h3>
+    <p><strong>Notation (linear algebra heavy):</strong></p>
+    <ul>
+        <li>\(a \in \mathbb{R}^N\) — stencil weights</li>
+        <li>\(W = \text{diag}(\Phi_\delta(x - x_i)) \in \mathbb{R}^{N \times N}\) — weight matrix</li>
+        <li>\(P(x) \in \mathbb{R}^M\) — polynomial basis evaluated at \(x\)</li>
+        <li>\(P \in \mathbb{R}^{M \times N}\) — polynomial basis evaluated at all data points: \(P_{ij} = p_j(x_i)\)</li>
+        <li>\(u = u(x_i) \in \mathbb{R}^N\) — function values at data points</li>
+        <li>\(c \in \mathbb{R}^M\) — polynomial coefficients</li>
+    </ul>
+
+    <p><strong>Dimensions:</strong></p>
+    <ul>
+        <li>\(N\) = number of nodes</li>
+        <li>\(M = \dim(\Pi_m(\mathbb{R}^d))\) = number of polynomial basis functions</li>
+    </ul>
+
+    <h3>4.2 Primal Problem</h3>
+
+    $$\min_{c \in \mathbb{R}^M} \frac{1}{2} \underbrace{(u - Pc)^\top W (u - Pc)}_{\mathcal{L}}$$
+
+    <div class="example-box">
+        <strong>Solution:</strong>
+
+        <p><strong>Step 1:</strong> Expand the objective:</p>
+
+        $$\mathcal{L} = \frac{1}{2} c^\top P W P^\top c - c^\top P W u + \text{(terms independent of } c\text{)}$$
+
+        <p><strong>Step 2:</strong> Recall calculus identities:</p>
+
+        $$\frac{\partial}{\partial x} \frac{1}{2} x^\top A x = \frac{1}{2}(A + A^\top)x, \quad \frac{\partial}{\partial x} y^\top x = y$$
+
+        <p><strong>Step 3:</strong> Take gradient and set to zero:</p>
+
+        $$\frac{\partial \mathcal{L}}{\partial c} = PWP^\top c - PWu = 0$$
+
+        $$\Rightarrow c = (PWP^\top)^{-1} PWu$$
+
+        <p><strong>Step 4:</strong> The MLS approximation is:</p>
+
+        $$\begin{aligned}
+        S_{f,\bar{X}}(x) &= c \cdot P(x) \\
+        &= P(x)^\top (PWP^\top)^{-1} PWu
+        \end{aligned}$$
+    </div>
+
+    <h3>4.3 Dual Problem</h3>
+
+    $$\begin{aligned}
+    \min_{a \in \mathbb{R}^N} \quad & \frac{1}{2} a(x)^\top W^{-1} a(x) \\
+    \text{s.t.} \quad & a(x)^\top P = P(x)^\top
+    \end{aligned}$$
+
+    <p><strong>Interpretation:</strong> Find minimal weighted norm stencil weights \(a(x)\) that reproduce all polynomials up to degree \(m\).</p>
+
+    <div class="example-box">
+        <strong>Applying the Schur complement formula:</strong>
+
+        <p>The KKT system is:</p>
+
+        $$\begin{pmatrix}
+        W^{-1} & P^\top \\
+        P & 0
+        \end{pmatrix}
+        \begin{pmatrix}
+        a(x) \\
+        \lambda
+        \end{pmatrix}
+        =
+        \begin{pmatrix}
+        0 \\
+        P(x)
+        \end{pmatrix}$$
+
+        <p><strong>Step 1:</strong> Identify Schur complement:</p>
+
+        $$S = P W P^\top$$
+
+        <p><strong>Step 2:</strong> Solve for \(\lambda\):</p>
+
+        $$\lambda = -S^{-1} P(x) = -(PWP^\top)^{-1} P(x)$$
+
+        <p><strong>Step 3:</strong> Solve for \(a(x)\):</p>
+
+        $$\begin{aligned}
+        a(x) &= -W P^\top \lambda \\
+        &= W P^\top S^{-1} P(x)
+        \end{aligned}$$
+
+        <p><strong>Step 4:</strong> The MLS approximation is:</p>
+
+        $$\begin{aligned}
+        S_{f,\bar{X}}(x) &= u^\top a(x) \\
+        &= u^\top W P^\top S^{-1} P(x) \\
+        &= P(x)^\top (PWP^\top)^{-1} PWu
+        \end{aligned}$$
+
+        <p>This matches the primal formulation! ✓</p>
+    </div>
+
+    <hr>
+
+    <h2>5. Extension to Differential Operators</h2>
+
+    <div class="theorem-box">
+        <strong>Corollary:</strong> Replace the constraint \(a(x)^\top P = P(x)^\top\) with:
+        $$a(x)^\top P = D^\alpha P(x)$$
+        to obtain <strong>differential operator stencils</strong> that reproduce differentiated polynomials.
+    </div>
+
+    <p><strong>Question:</strong> Is the polynomial reproduction set non-empty? (i.e., do solutions always exist?)</p>
+
+    <hr>
+
+    <h2>6. Existence Theorem for Polynomial Reproduction</h2>
+
+    <div class="theorem-box">
+        <strong>Theorem (Wendland, "Scattered Data Approximation," Theorem 4.7):</strong>
+        <p>Suppose \(\Omega \subseteq \mathbb{R}^d\) is compact and satisfies an <strong>interior cone condition</strong> with angle \(\theta \in (0, \pi/2)\) and radius \(r\). Then there exists stencil weights \(a_j^*(x)\) for any \(x\) such that:</p>
+
+        <ol>
+            <li><strong>Polynomial reproduction:</strong> 
+                $$
+                \sum_i a_j^*(x) p(x_j) = p(x) \quad \forall p \in \Pi_m(\mathbb{R}^d)
+                $$
+            </li>
+
+            <li><strong>Bounded stability:</strong> 
+                $$
+                \sum_j |a_j^*(x)| \leq \tilde{c}_1
+                $$
+            </li>
+
+            <li><strong>Compact support (locality):</strong> 
+                $$
+                a_j^*(x) = 0 \quad \text{if} \quad \|x - x_j\|_2 > \tilde{c}_2 h_{\bar{X}, \Omega}
+                $$
+            </li>
+        </ol>
+
+        <p>where \(\tilde{c}_1\) and \(\tilde{c}_2\) are independent of \(h_{\bar{X}, \Omega}\) and can be explicitly derived.</p>
+    </div>
+
+    <p><strong>Implications:</strong></p>
+    <ul>
+        <li>Stencils with polynomial reproduction always exist under mild geometric conditions</li>
+        <li>Stencil weights remain bounded (stability)</li>
+        <li>Stencils have compact support (locality, efficient computation)</li>
+    </ul>
+
+    <hr>
+
+    <h2>Summary</h2>
+    <div class="summary-box">
+        <p>This lecture established three key frameworks for learning constrained numerical methods:</p>
+
+        <ol>
+            <li><strong>Constrained optimization via Lagrange multipliers and Schur complement</strong> — provides a systematic approach to enforce equality constraints (conservation laws, consistency conditions) in learned stencils</li>
+
+            <li><strong>Three training strategies</strong> for data-driven stencil learning:
+                <ul>
+                    <li>Penalty methods (avoid due to difficulty choosing \(\lambda\))</li>
+                    <li>Reduced-space optimization (efficient but requires differentiating through solvers)</li>
+                    <li>Lagrange multipliers (most flexible, decouples optimization from PDE solve)</li>
+                </ul>
+            </li>
+
+            <li><strong>Polynomial reproduction framework</strong> — connects moving least squares, primal-dual optimization, and stencil design; guarantees existence of stable, local stencils that exactly reproduce polynomials</li>
+
+            <li><strong>Wendland's theorem</strong> — ensures polynomial reproduction stencils exist, are stable, and have compact support under mild geometric conditions</li>
+        </ol>
+
+        <p><strong>Key Takeaway:</strong> Constrained optimization provides the mathematical machinery to design physics-informed learning algorithms that respect fundamental properties like conservation laws and polynomial consistency. The primal-dual formulation reveals that seeking minimal-norm stencils with polynomial reproduction is equivalent to moving least squares approximation, unifying classical numerical analysis with modern data-driven methods.</p>
+
+        <p><strong>Next steps:</strong> Apply these principles to construct energy-conserving time integrators using Hamiltonian mechanics and symplectic structure (Lecture 7).</p>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "\\[", right: "\\]", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>

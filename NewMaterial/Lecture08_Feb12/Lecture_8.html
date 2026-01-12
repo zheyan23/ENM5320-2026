@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 8: Lagrangian Mechanics, Functional Derivatives, and Noether's Theorem - ENM 5320</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <style>
+        :root {
+            --penn-blue: #011F5B;
+            --penn-red: #990000;
+            --accent-blue: #82AFD3;
+            --light-bg: #F8F9FA;
+        }
+        body {
+            font-family: 'Georgia', serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: var(--penn-blue);
+            font-size: 2.2em;
+            border-bottom: 3px solid var(--penn-red);
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: var(--penn-blue);
+            margin-top: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+        h3 {
+            color: var(--penn-red);
+            margin-top: 20px;
+        }
+        .definition, .theorem-box, .example-box, .summary-box {
+            background: var(--light-bg);
+            border-left: 4px solid var(--penn-blue);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .back-link {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: var(--penn-blue);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .back-link:hover {
+            background: var(--penn-red);
+        }
+        strong {
+            color: var(--penn-blue);
+        }
+        p {
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+        ul, ol {
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .katex-display {
+            margin: 1.5em 0;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+    
+    <h1>Lecture 8: Lagrangian Mechanics, Functional Derivatives, and Noether's Theorem</h1>
+    
+    <p><strong>Date:</strong> February 17, 2025</p>
+    <p><strong>Topics:</strong> Functional derivatives, Euler-Lagrange equations, principle of least action, Legendre transform, Noether's theorem</p>
+
+    <h2>0. Overview</h2>
+
+    <p>This lecture introduces <strong>Lagrangian mechanics</strong>, the third pillar of classical mechanics alongside Newtonian and Hamiltonian formulations. While all three describe the same physics, they emphasize different aspects and offer complementary tools for analysis and computation.</p>
+
+    <p>The Lagrangian approach centers on <strong>optimization</strong>: physical systems evolve along paths that extremize the <strong>action functional</strong> $S[u] = \int_0^T L\, dt$, where $L = T - V$ is the difference between kinetic and potential energy. This <strong>principle of least action</strong> transforms mechanics into a variational problem, making it natural to enforce constraints (via Lagrange multipliers) and identify conserved quantities (via Noether's theorem).</p>
+
+    <p>To work with action functionals, we need calculus in infinite-dimensional function spaces. We introduce two approaches: the <strong>Fréchet derivative</strong> (abstract, general) and the <strong>Gâteaux derivative</strong> (practical, directional). These lead to the <strong>Euler-Lagrange equations</strong>, which systematically convert variational principles into differential equations. We then connect Lagrangian and Hamiltonian mechanics via the <strong>Legendre transform</strong>, showing they are dual perspectives on the same physics.</p>
+
+    <p>Finally, <strong>Noether's theorem</strong> reveals the profound connection between symmetries and conservation laws: every continuous symmetry of the Lagrangian corresponds to a conserved quantity. This explains <em>why</em> momentum, energy, and angular momentum are conserved and guides the design of symmetry-respecting neural network architectures.</p>
+
+    <p><strong>Pedagogical context:</strong> Understanding the optimization-centric Lagrangian viewpoint is essential for modern physics-informed machine learning. Many recent methods (Physics-Informed Neural Networks, Neural ODEs, Hamiltonian Neural Networks) implicitly use variational principles and functional derivatives to encode physical constraints.</p>
+
+    <h2>1. Three Perspectives on Mechanics</h2>
+
+    <h3>1.1 Comparison of Formalisms</h3>
+
+    <p><strong>Newtonian Mechanics:</strong> $F = m\ddot{x}$</p>
+    <ul>
+        <li><strong>Strengths:</strong> Good for force balance, intuitive</li>
+        <li><strong>Weaknesses:</strong> Hard to associate with invariants, coordinate-dependent</li>
+    </ul>
+
+    <p><strong>Hamiltonian Mechanics:</strong> $\dot{x} = J\nabla H$</p>
+    <ul>
+        <li><strong>Strengths:</strong> Energy-centric, good for designing schemes, natural for phase space analysis</li>
+        <li><strong>Weaknesses:</strong> Requires doubling dimension $(q, p)$, Legendre transform can be non-trivial</li>
+    </ul>
+
+    <p><strong>Lagrangian Mechanics:</strong> $x = \arg\min_{\tilde{x}} S(\tilde{x})$</p>
+    <ul>
+        <li><strong>Strengths:</strong> Optimization-centric, easy constraint treatment, natural symmetry analysis</li>
+        <li><strong>Weaknesses:</strong> Requires functional calculus, indirect (no explicit time evolution)</li>
+    </ul>
+
+    <h2>2. Lagrangian Mechanics: Basic Setup</h2>
+
+    <h3>2.1 Definitions</h3>
+
+    <div class="definition">
+        <p><strong>Lagrangian density:</strong></p>
+        $$L = \underbrace{T}_{\text{kinetic}} - \underbrace{V}_{\text{potential}}$$
+
+        <p>For continuous systems (fields):</p>
+        $$L = \int_\Omega \mathcal{L}[u]\, dx$$
+        <p>where $\mathcal{L}$ is the <strong>Lagrangian density</strong>.</p>
+
+        <p><strong>Action:</strong></p>
+        $$S = \int_0^T L\, dt = \int_0^T \int_\Omega \mathcal{L}[u]\, dx\, dt$$
+    </div>
+
+    <h3>2.2 Principle of Least Action</h3>
+
+    <p>Informally, the path that a system will evolve through for fixed initial and final states will be the $u(t)$ which minimizes the action:</p>
+    $$u = \arg\min_{\hat{u}} \int_0^T \int_\Omega \mathcal{L}[u]\, dx\, dt$$
+
+    <p><strong>Challenge:</strong> To make sense of this, we need to minimize expressions like $S$. In standard calculus, we take a derivative of a function $f(x)$, set it to zero to find extremal points. Here though:</p>
+    <ul>
+        <li><strong>Input:</strong> $x$ is a coordinate, $f$ is a function</li>
+        <li><strong>Variational calculus:</strong> $u$ is a function, $S$ is a <strong>functional</strong></li>
+    </ul>
+
+    <div class="definition">
+        <p>A <strong>functional</strong> maps function spaces to real numbers:</p>
+        $$S: V \to \mathbb{R}, \quad V \text{ a space of functions}$$
+        <p>i.e., the input space is now <strong>infinite-dimensional</strong>.</p>
+    </div>
+
+    <h2>3. Functional Derivatives</h2>
+
+    <h3>3.1 Fréchet Derivative</h3>
+
+    <p>Let $V$ be a function space, $F: V \to \mathbb{R}$. The <strong>differential</strong> $\delta F[u]$ is defined as follows: for $\delta u \in V$,</p>
+    $$F[u + \delta u] - F[u] = \delta F[u] + \varepsilon \|\delta u\|$$
+    <p>such that $\lim_{\varepsilon \to 0} \varepsilon \|\delta u\| = 0$.</p>
+
+    <p><strong>Interpretation:</strong> This is analogous to the total derivative in finite dimensions, but the norm $\|\cdot\|$ is now in a function space (e.g., $L^2$ norm).</p>
+
+    <h3>3.2 Gâteaux Derivative</h3>
+
+    <p><strong>Idea:</strong> Introduce a scalar parameter and use the vector calculus definition of a directional derivative.</p>
+    $$\begin{aligned}
+    \delta F[u, \delta u] &= \lim_{\varepsilon \to 0} \frac{F[u + \varepsilon \delta u] - F[u]}{\varepsilon} \\
+    &= \left.\frac{d}{d\varepsilon} F[u + \varepsilon \delta u]\right|_{\varepsilon = 0}
+    \end{aligned}$$
+
+    <p>This is analogous to the <strong>Gâteaux derivative</strong> or <strong>directional derivative</strong> in infinite dimensions.</p>
+
+    <h3>3.3 Example: Kinetic Energy</h3>
+
+    <div class="example-box">
+        <p>Let $K = \frac{1}{2}\int_\Omega \rho u^2\, dx$. Take variation with respect to $u$:</p>
+        $$\begin{aligned}
+        (\delta_u K, \delta u) &= \lim_{\varepsilon \to 0} \frac{1}{\varepsilon} \int_\Omega \left[\frac{\rho(u + \varepsilon \delta u)^2}{2} - \frac{\rho u^2}{2}\right] dx \\
+        &= \lim_{\varepsilon \to 0} \frac{1}{\varepsilon} \int_\Omega \rho\left[\frac{u^2}{2} + \varepsilon u \delta u + \frac{\varepsilon^2}{2}(\delta u)^2 - \frac{u^2}{2}\right] dx \\
+        &= \lim_{\varepsilon \to 0} \int_\Omega \left[\rho u \delta u + \frac{\varepsilon}{2}\rho (\delta u)^2\right] dx \\
+        &= \int_\Omega \rho u \delta u\, dx \\
+        &= (\rho u, \delta u)
+        \end{aligned}$$
+
+        <p>And so we identify:</p>
+        $$\delta_u K = \rho u \quad \text{(the variation)}$$
+    </div>
+
+    <h3>3.4 Further Properties</h3>
+
+    <p>Denote $\frac{\delta}{\delta u} F[u] = \delta_u F[u]$.</p>
+
+    <p><strong>Linearity:</strong></p>
+    $$\frac{\delta}{\delta u}(\lambda F[u] + \mu G[u]) = \lambda \delta_u F[u] + \mu \delta_u G[u]$$
+
+    <p><strong>Product rule:</strong></p>
+    $$\frac{\delta}{\delta u}(F[u] G[u]) = \delta_u F \cdot G + F \cdot \delta_u G$$
+
+    <p><strong>Chain rule:</strong></p>
+    $$\frac{\delta}{\delta u}(F[g(u)]) = \frac{\delta F[g(u)]}{\delta g(u)} \cdot \frac{dg(u)}{du}$$
+
+    <h2>4. The Euler-Lagrange Equations</h2>
+
+    <h3>4.1 General Derivation</h3>
+
+    <p>Assume a generic functional density:</p>
+    $$F[u] = \int_\Omega f(x, u, \nabla u)\, dx$$
+
+    <div class="theorem-box">
+        <p><strong>Euler-Lagrange equation:</strong></p>
+        $$\delta_u F = 0 \quad \Rightarrow \quad \frac{\partial f}{\partial u} - \nabla \cdot \frac{\partial f}{\partial \nabla u} = 0$$
+
+        <p><strong>Practical note:</strong> We can just apply this as a formula and skip all the limits.</p>
+    </div>
+
+    <h3>4.2 Higher-Order Derivatives</h3>
+
+    <p>For different forms of $f$, we get different equations. For example:</p>
+    $$F[u] = \int_0^1 f(x, u, \partial_x u, \partial_{xx} u)\, dx$$
+
+    <p>Then:</p>
+    $$\delta_u F = \frac{\partial f}{\partial u} - \frac{d}{dx}\frac{\partial f}{\partial(\partial_x u)} + \frac{d^2}{dx^2}\frac{\partial f}{\partial(\partial_{xx} u)}$$
+
+    <h3>4.3 Application: Principle of Least Action</h3>
+
+    <p>For the action functional:</p>
+    $$S[u] = \int_a^b \int_\Omega \mathcal{L}(x, u, \dot{u})\, dx\, dt$$
+
+    <p>The path which admits an extremal value of $S$ satisfies:</p>
+    $$\delta_u S[u] = 0$$
+
+    <p>Applying the Euler-Lagrange equations:</p>
+    $$\frac{\partial \mathcal{L}}{\partial u} - \frac{d}{dt}\frac{\partial \mathcal{L}}{\partial \dot{u}} = 0$$
+
+    <h3>4.4 Example: Linear Pendulum</h3>
+
+    <div class="example-box">
+        <p><strong>Kinetic energy:</strong></p>
+        $$T = \frac{1}{2}m v^2 = \frac{1}{2}m L^2 \dot{\theta}^2$$
+
+        <p><strong>Potential energy:</strong></p>
+        $$\begin{aligned}
+        U &= mgh \\
+        h &= L(1 - \cos\theta) \approx \frac{1}{2}L\theta^2 \quad \text{(small angle)}
+        \end{aligned}$$
+
+        <p><strong>Lagrangian:</strong></p>
+        $$L = \frac{1}{2}m L^2 \dot{\theta}^2 - \frac{1}{2}mgL\theta^2$$
+
+        <p><strong>Euler-Lagrange equation:</strong></p>
+        $$\frac{d}{dt}(mL^2\dot{\theta}) = -mgL\theta$$
+        $$mL^2\ddot{\theta} = -mgL\theta \quad \Rightarrow \quad \ddot{\theta} = -\frac{g}{L}\theta$$
+
+        <p>Recovering the harmonic oscillator equation. ✓</p>
+    </div>
+
+    <h2>5. Legendre Transform</h2>
+
+    <h3>5.1 Definition</h3>
+
+    <div class="definition">
+        <p>A technique to switch between the Lagrangian and Hamiltonian descriptions.</p>
+
+        <p>Given a Lagrangian:</p>
+        $$L(q_1, \ldots, q_N, \dot{q}_1, \ldots, \dot{q}_N)$$
+
+        <p>The <strong>Legendre transform</strong> induces the <strong>conjugate momenta</strong> $p_1, \ldots, p_N$:</p>
+        $$\begin{cases}
+        H(q_1, \ldots, q_N, p_1, \ldots, p_N) = \sum_i p_i \dot{q}_i - L(q_1, \ldots, q_N, \dot{q}_1, \ldots, \dot{q}_N) \\
+        p_i = \frac{\partial L}{\partial \dot{q}_i}
+        \end{cases}$$
+    </div>
+
+    <h3>5.2 Example: Pendulum</h3>
+
+    <div class="example-box">
+        <p><strong>Lagrangian:</strong> $L = \frac{1}{2}mL^2\dot{q}^2 - \frac{1}{2}mgLq^2$ (where $q = \theta$)</p>
+
+        <p><strong>Step 1:</strong> Compute conjugate momentum:</p>
+        $$p = \frac{\partial L}{\partial \dot{q}} = mL^2\dot{q} \quad \Rightarrow \quad \dot{q} = \frac{p}{mL^2}$$
+
+        <p><strong>Step 2:</strong> Apply Legendre transform:</p>
+        $$\begin{aligned}
+        H &= p\dot{q} - L \\
+        &= \frac{p^2}{2mL^2} + \frac{mgLq^2}{2}
+        \end{aligned}$$
+
+        <p>This recovers the Hamiltonian we derived earlier! ✓</p>
+    </div>
+
+    <h2>6. Constrained Lagrangians</h2>
+
+    <h3>6.1 Holonomic Constraints</h3>
+
+    <div class="definition">
+        <p><strong>Definition:</strong> If a constraint is an equality and a function of coordinates only (no $\dot{q}$'s), it is <strong>holonomic</strong>:</p>
+        $$f_i(q, t) = 0$$
+
+        <p>We can augment the Lagrangian with Lagrange multipliers:</p>
+        $$\hat{L}(q, \dot{q}, \lambda) = L(q, \dot{q}) - \sum_i \lambda_i f_i(q, t)$$
+
+        <p>where $\lambda$ is a <strong>field</strong> (in contrast to the KKT multipliers we considered previously, which were scalar).</p>
+    </div>
+
+    <h3>6.2 Equations of Motion</h3>
+
+    <p>Applying Euler-Lagrange to the augmented Lagrangian:</p>
+    $$\begin{cases}
+    \frac{d}{dt}\left(\frac{\partial L}{\partial \dot{q}_j}\right) = \frac{\partial L}{\partial q_j} + \lambda(t) \frac{\partial f_i}{\partial q_j} \\
+    f_i(q, t) = 0
+    \end{cases}$$
+
+    <h2>7. Noether's Theorem</h2>
+
+    <h3>7.1 Statement</h3>
+
+    <div class="theorem-box">
+        <p><strong>Informal statement:</strong> Symmetries which leave the Lagrangian unchanged each have a corresponding <strong>conserved quantity</strong>.</p>
+
+        <p>Consider the transformations:</p>
+        $$\begin{aligned}
+        t &\to t' = t + \delta t \\
+        q &\to q' = q + \delta q
+        \end{aligned}$$
+
+        <p>Assume $N$ such maps parameterized by small parameters $\varepsilon_r$:</p>
+        $$\begin{aligned}
+        \delta t &= \sum_r \varepsilon_r T_r \\
+        \delta q &= \sum_r \varepsilon_r Q_r
+        \end{aligned}$$
+
+        <p><strong>Noether's Theorem:</strong> If the Lagrangian is invariant under these transformations, then:</p>
+        $$\left(\frac{\partial L}{\partial \dot{q}} \cdot \dot{q} - L\right) T_r - \frac{\partial L}{\partial \dot{q}} \cdot Q_r = \text{const.}$$
+        <p>are <strong>conserved quantities</strong>.</p>
+    </div>
+
+    <h3>7.2 Example 1: Time Invariance</h3>
+
+    <div class="example-box">
+        <p><strong>Transformation:</strong></p>
+        $$\begin{aligned}
+        t &\to t + \delta t \\
+        N &= 1, \quad T = 1, \quad Q = 0
+        \end{aligned}$$
+
+        <p><strong>Conserved quantity:</strong></p>
+        $$\frac{\partial L}{\partial \dot{q}} \cdot \dot{q} - L = \text{const.}$$
+
+        <p>This is the <strong>Hamiltonian</strong> (total energy)! Energy conservation follows from time-translation symmetry.</p>
+    </div>
+
+    <h3>7.3 Example 2: Translation Invariance</h3>
+
+    <div class="example-box">
+        <p><strong>Transformation:</strong></p>
+        $$\begin{aligned}
+        q &\to q + \delta q \\
+        N &= 1, \quad T = 0, \quad Q = 1
+        \end{aligned}$$
+
+        <p><strong>Conserved quantity:</strong></p>
+        $$\frac{\partial L}{\partial \dot{q}} = \text{const.}$$
+
+        <p>This is the <strong>conjugate momentum</strong>! Momentum conservation follows from spatial translation symmetry.</p>
+    </div>
+
+    <h3>7.4 Example 3: Rotational Invariance</h3>
+
+    <div class="example-box">
+        <p><strong>Transformation:</strong> Rotation of $\delta\theta$ about a given axis $n$:</p>
+        $$r \to r + \delta\theta\, n \times r$$
+        $$N = 1, \quad T = 0, \quad Q = n \times r$$
+
+        <p><strong>Conserved quantity:</strong></p>
+        $$\begin{aligned}
+        \text{const.} &= \frac{\partial L}{\partial \dot{q}} \cdot Q \\
+        &= p \cdot (n \times r) \\
+        &= n \cdot (r \times p) \\
+        &= n \cdot L_{\text{ang}}
+        \end{aligned}$$
+
+        <p>where $L_{\text{ang}} = r \times p$ is <strong>angular momentum</strong>. Angular momentum conservation follows from rotational symmetry.</p>
+    </div>
+
+    <h2>8. Implications for Machine Learning</h2>
+
+    <p><strong>Design principle:</strong> When machine learning dynamics, we will design architectures which respect this set of symmetries.</p>
+
+    <p><strong>Examples:</strong></p>
+    <ul>
+        <li><strong>Translation equivariance</strong> in CNNs</li>
+        <li><strong>Rotation equivariance</strong> in graph neural networks (e.g., E(3)-equivariant networks)</li>
+        <li><strong>Gauge symmetries</strong> in physics-informed networks</li>
+    </ul>
+
+    <p>By building symmetries into the architecture, we:</p>
+    <ol>
+        <li>Reduce the hypothesis space (fewer parameters to learn)</li>
+        <li>Guarantee conservation laws by construction</li>
+        <li>Improve generalization to out-of-distribution data</li>
+    </ol>
+
+    <h2>Summary</h2>
+
+    <div class="summary-box">
+        <p>This lecture established the Lagrangian perspective on mechanics and connected it to machine learning:</p>
+
+        <ol>
+            <li><strong>Functional derivatives</strong> (Fréchet and Gâteaux) extend calculus to infinite-dimensional function spaces, enabling variational principles</li>
+
+            <li><strong>Euler-Lagrange equations</strong> systematically convert optimization principles ($\delta S = 0$) into differential equations; formula: $\frac{\partial \mathcal{L}}{\partial u} - \frac{d}{dt}\frac{\partial \mathcal{L}}{\partial \dot{u}} = 0$</li>
+
+            <li><strong>Legendre transform</strong> connects Lagrangian and Hamiltonian mechanics via duality: $H = \sum_i p_i\dot{q}_i - L$ where $p_i = \frac{\partial L}{\partial \dot{q}_i}$</li>
+
+            <li><strong>Constrained Lagrangians</strong> naturally incorporate holonomic constraints via Lagrange multipliers, extending to PDE-constrained optimization</li>
+
+            <li><strong>Noether's theorem</strong> reveals deep connection between symmetries and conservation laws:
+                <ul>
+                    <li>Time invariance → Energy conservation</li>
+                    <li>Translation invariance → Momentum conservation</li>
+                    <li>Rotation invariance → Angular momentum conservation</li>
+                </ul>
+            </li>
+        </ol>
+
+        <p><strong>Key Takeaway:</strong> The Lagrangian formulation transforms mechanics into an optimization problem, making it natural to enforce constraints and identify conserved quantities. Noether's theorem explains <em>why</em> conservation laws exist and provides a blueprint for designing neural network architectures that respect fundamental symmetries. By building symmetries into model architectures, we guarantee conservation laws by construction and dramatically improve generalization.</p>
+    </div>
+    
+    <a href="../../index.html" class="back-link">← Back to Course Home</a>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: "$$", right: "$$", display: true},
+                    {left: "$", right: "$", display: false},
+                    {left: "\\(", right: "\\)", display: false},
+                    {left: "\\[", right: "\\]", display: true}
+                ],
+                throwOnError: false
+            });
+        });
+    </script>
+</body>
+</html>
