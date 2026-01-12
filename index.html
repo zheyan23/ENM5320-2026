@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENM5320 - AI4Science/Science4AI - Spring 2026</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>ENM5320</h1>
+            <p class="subtitle">AI4Science/Science4AI: Combining theoretical mechanics, numerical analysis, and machine learning</p>
+            <p class="term">Spring 2026</p>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#schedule">Schedule</a></li>
+                <li><a href="#objectives">Objectives</a></li>
+                <li><a href="#grading">Grading</a></li>
+                <li><a href="#staff">Staff</a></li>
+                <li><a href="#policies">Policies</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <!-- Course Info Box -->
+        <section class="course-info">
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Meeting Time:</strong> MW 10:15am-11:44am
+                </div>
+                <div class="info-item">
+                    <strong>Location:</strong> TOWN 309
+                </div>
+                <div class="info-item">
+                    <strong>Dates:</strong> January 15 - April 30, 2026
+                </div>
+                <div class="info-item">
+                    <strong>Discussion Board:</strong> <a href="https://edstem.org/us/courses/74501" target="_blank">Ed Discussion</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Description -->
+        <section id="overview">
+            <h2>Course Description</h2>
+            <p>Many seek to replicate the successes of AI/ML in computer vision and natural language processing in the sciences, aiming to tackle previously inaccessible problems in scientific discovery, engineering prediction, and optimal design. ML however has been powered by "black-box" architectures specifically tailored toward text/image data which lack the mathematical structure necessary to provide predictions which meet the requirements for high-consequence science and engineering: consistency with physical principles, numerical robustness, interpretability, and amenability to uncertainty quantification.</p>
+            
+            <p>In this course we will survey theories of variational mechanics, geometric dynamics and numerical analysis to understand how to construct simulators from data which respect mechanical and geometric principles.</p>
+            
+            <p>While ML may improve engineering models (AI4Science), we can also use scientific computing principles to improve the performance of ML models for physics-agnostic tasks (Science4AI). Many "black-box" architectures admit alternative representations from scientific computing, e.g. CNNs as finite differences, multilayer perceptrons as B-splines, ResNets as discrete differential equations, graph attention networks as finite element/volume methods, or generative models as stochastic differential equations.</p>
+            
+            <p>The course will initially focus on reviewing material necessary for data-driven modeling, including: probability, variational calculus, and discretizations of partial/ordinary-differential equations. We will consider problems from both engineering settings and data analytics, focusing on problems of engineering relevance such as inverse problems, reduced-order modeling, and data assimilation.</p>
+        </section>
+
+        <!-- Schedule -->
+        <section id="schedule">
+            <h2>Course Schedule</h2>
+            <div class="schedule">
+                <!-- January -->
+                    <div class="lecture-content">
+                        <h3>Lecture 1</h3>
+                        <p>Course logistics. Fundamentals of analysis and PyTorch.</p>
+                        <ul class="resources">
+                            <li><a href="NewMaterial/Lecture01_Jan15/Analysis.html">Real Analysis Fundamentals</a></li>
+                            <li><a href="https://find.library.upenn.edu/catalog/9977071082103681?hld_id=53499053800003681" target="_blank">E-book reference</a> (Ch. 1-2 of Gustafsson)</li>
+                        </ul>
+                    </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Jan 20</div>
+                    <div class="lecture-content">
+                        <h3>No class - MLK Jr. Day</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Jan 22</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 2: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Jan 27</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 3: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Jan 29</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 4: TBD</h3>
+                    </div>
+                </div>
+
+                <!-- February -->
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 3</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 5: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 5</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 6: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 10</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 7: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 12</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 8: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 17</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 9: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 19</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 10: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 24</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 11: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 26</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 12: TBD</h3>
+                    </div>
+                </div>
+
+                <!-- March -->
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 3</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 13: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 5</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 14: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 7-15</div>
+                    <div class="lecture-content">
+                        <h3>No class - Spring Break</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 17</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 15: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 19</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 16: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 24</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 17: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 26</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 18: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 31</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 19: TBD</h3>
+                    </div>
+                </div>
+
+                <!-- April -->
+                <div class="lecture-item">
+                    <div class="lecture-date">Apr 2</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 20: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Apr 7</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 21: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Apr 9</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 22: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Apr 14</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 23: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Apr 16</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 24: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Apr 21</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 25: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Apr 23</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 26: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Apr 28</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 27: TBD</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Apr 30</div>
+                    <div class="lecture-content">
+                        <h3>Lecture 28: TBD</h3>
+                    </div>
+                </div>
+                <!-- 
+                <div class="lecture-item">
+                    <div class="lecture-date">Jan 22</div>
+                    <div class="lecture-content">
+                        <h3>Finite difference crash course</h3>
+                        <p>Fourier analysis, grid functions, analysis for solutions to linear transport.</p>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_2.pdf">Lecture notes</a></li>
+                            <li><a href="OldNotes/ENM5320/Assignments/ENM5320__HW1.pdf">Homework 1</a> - Due 1/29</li>
+                            <li><a href="OldNotes/ENM5320/Code/Lecture01.ipynb">Jupyter notebook</a></li>
+                            <li><a href="https://find.library.upenn.edu/catalog/9977071082103681?hld_id=53499053800003681" target="_blank">E-book reference</a> (Ch. 1-2 of Gustafsson)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Jan 29</div>
+                    <div class="lecture-content">
+                        <h3>Virtual lecture: Introduction to data-driven models</h3>
+                        <p>Finite difference code and pytorch review.</p>
+                        <ul class="resources">
+                            <li><a href="https://www.youtube.com/watch?v=z7enURoFU3k" target="_blank">Lecture video</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Jan 31</div>
+                    <div class="lecture-content">
+                        <h3>Stability analysis and the Lax equivalence theorem</h3>
+                        <p>Fundamental theorem of finite differences.</p>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_4.pdf">Lecture notes</a></li>
+                            <li><a href="OldNotes/ENM5320/Code/finiteDifferenceExample.ipynb">Example code (numpy)</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 3</div>
+                    <div class="lecture-content">
+                        <h3>Designing learning architectures with consistency and stability guarantees</h3>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_5.pdf">Lecture notes</a></li>
+                            <li><a href="OldNotes/ENM5320/Code/PyTorchFDM.ipynb">Example code (PyTorch)</a></li>
+                            <li><a href="OldNotes/ENM5320/Assignments/ENM5320__HW2.pdf">Homework 2</a> - Due 2/10</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 5</div>
+                    <div class="lecture-content">
+                        <h3>Nonlinear stability analysis</h3>
+                        <p>Constrained quadratic programming, and polynomial reproduction.</p>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_6.pdf">Lecture notes</a></li>
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_6_addendum.pdf">Lecture notes - addendum</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 10</div>
+                    <div class="lecture-content">
+                        <h3>Coding tutorial: nonlinear stencils</h3>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Code/Trainable_Nonlinear_Stencil.ipynb">Code</a></li>
+                            <li><a href="https://www.youtube.com/watch?v=U6bb5Fv-i-c" target="_blank">YouTube lecture</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 12</div>
+                    <div class="lecture-content">
+                        <h3>Hamiltonian systems and discrete gradients</h3>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_7.pdf">Lecture notes</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 17</div>
+                    <div class="lecture-content">
+                        <h3>Lagrangian mechanics</h3>
+                        <p>Functional derivatives, the principle of least action, Legendre transforms and Noether's theorem.</p>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_8.pdf">Lecture notes</a></li>
+                            <li><a href="https://www.feynmanlectures.caltech.edu/II_19.html" target="_blank">Feynman lecture on least action</a></li>
+                            <li><a href="https://greydanus.github.io/2020/03/10/lagrangian-nns/" target="_blank">Lagrangian neural networks</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 19</div>
+                    <div class="lecture-content">
+                        <h3>Obtaining discrete structure-preserving stencils from the principle of least action</h3>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_9.pdf">Lecture notes</a></li>
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/noether_thm_simple_proof.pdf">Additional proof for Noether's theorem</a></li>
+                            <li><a href="OldNotes/ENM5320/Assignments/ENM5320__HW3.pdf">Homework 3</a> - Due 2/26</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 24</div>
+                    <div class="lecture-content">
+                        <h3>Complete data-driven hyperbolic system model</h3>
+                        <p>Time integration revisited: multi-stage/multi-step schemes, linear stability analysis, Stormer-Verlet.</p>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_10.pdf">Lecture notes</a></li>
+                            <li><a href="OldNotes/ENM5320/Code/HNN_demo/">Code</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Feb 26</div>
+                    <div class="lecture-content">
+                        <h3>Finishing last lecture, beginning midterm group miniprojects</h3>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 3</div>
+                    <div class="lecture-content">
+                        <h3>Stochastic processes</h3>
+                        <p>Brief probability review. Maximum likelihood. Euler-Maruyama, and structure preserving stochastic dynamics.</p>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_11.pdf">Lecture notes</a></li>
+                            <li><a href="https://chrisrackauckas.com/assets/Papers/ChrisRackauckas-IntuitiveSDEs.pdf" target="_blank">Reference notes</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 17</div>
+                    <div class="lecture-content">
+                        <h3>Introduction to Galerkin/Rayleigh-Ritz method and FEM</h3>
+                        <p>Concluding finite difference method. FEM code tutorial.</p>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_12.pdf">Lecture notes</a></li>
+                            <li><a href="OldNotes/ENM5320/Code/finiteElement.py">Code</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 19</div>
+                    <div class="lecture-content">
+                        <h3>Quasi-optimality estimates, nodal FEM and the interpolant</h3>
+                        <p>Optimal convergence in L2/H1, abstract Lax-Milgram theory.</p>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_13.pdf">Lecture notes</a></li>
+                            <li><a href="OldNotes/ENM5320/Code/FEMconvergence.ipynb">Code</a></li>
+                            <li>References: <a href="https://www.amazon.com/Numerical-Solution-Differential-Equations-Mathematics/dp/048646900X" target="_blank">Johnson</a>, <a href="https://link.springer.com/book/10.1007/978-0-387-75934-0" target="_blank">Brenner & Scott</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 24/26</div>
+                    <div class="lecture-content">
+                        <h3>Application of Lax-Milgram</h3>
+                        <p>Reaction-diffusion, elasticity, and incompressibility. Mixed finite element methods.</p>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_14.pdf">Lecture notes</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="lecture-item">
+                    <div class="lecture-date">Mar 31</div>
+                    <div class="lecture-content">
+                        <h3>Mixed finite element methods continued</h3>
+                        <p>Inf-sup compatibility. Conservation structure and nonlinear perturbations.</p>
+                        <ul class="resources">
+                            <li><a href="OldNotes/ENM5320/Lecture%20Notes/Lecture_15.pdf">Lecture notes</a></li>
+                        </ul>
+                    </div>
+                </div> -->
+            </div>
+        </section>
+
+        <!-- Course Objectives -->
+        <section id="objectives">
+            <h2>Course Objectives</h2>
+            <p>By the end of this course, you should be able to:</p>
+            <ul class="objectives-list">
+                <li>Comfortably use PyTorch or another automatic differentiation library to fit physics to traditional models</li>
+                <li>Implement standard schemes (finite differences, volumes, elements) into a simple 1D code</li>
+                <li>Use variational principles and numerical analysis to propose novel machine learning architectures</li>
+            </ul>
+        </section>
+
+        <!-- Prerequisites -->
+        <section id="prerequisites">
+            <h2>Prerequisites</h2>
+            <p>Formally this course is a sequence with ENM5310. It is ok if you haven't taken that class, but I will assume mathematical maturity, fluency in Python, familiarity with PyTorch, and a background in probability fundamentals and linear algebra. Experience with numerical analysis will be beneficial but not assumed.</p>
+        </section>
+
+        <!-- Teaching Staff -->
+        <section id="staff">
+            <h2>Teaching Staff and Office Hours</h2>
+            <div class="staff-grid">
+                <div class="staff-member">
+                    <h3>Instructor: Dr. Nat Trask</h3>
+                    <p>Associate Professor, MEAM</p>
+                    <p><strong>Email:</strong> ntrask@seas.upenn.edu</p>
+                    <p><strong>Office Hours:</strong> Tuesday 9:15-10:30am and by Appointment</p>
+                    <p><strong>Location:</strong> 5th floor Amy Gutmann Hall (AGH 519)</p>
+                </div>
+                <div class="staff-member">
+                    <h3>Graduate TA: Ben Shaffer</h3>
+                    <p><strong>Email:</strong> ben31@seas.upenn.edu</p>
+                    <p><strong>Office Hours:</strong> To be determined</p>
+                    <p><strong>Location:</strong> AGH </p>
+                </div>
+            </div>
+            <p class="note"><strong>Reminder:</strong> All correspondence should be through the Ed forum. Emails are provided here for special circumstances (e.g., you can't access the OH building) and will otherwise be ignored.</p>
+        </section>
+
+        <!-- Grading -->
+        <section id="grading">
+            <h2>Course Requirements and Evaluation</h2>
+            <div class="grading-breakdown">
+                <div class="grade-item">
+                    <div class="grade-percent">40%</div>
+                    <div class="grade-desc">
+                        <h3>Homework Assignments</h3>
+                        <p>Regular assignments consisting of both analysis and programming. You are encouraged to intelligently use LLMs to assist you in writing code, but not in writing up your reports. If you do use LLMs, or any other resources including internet resources or collaboration with other students, you must attribute them to comply with the Penn code of conduct.</p>
+                    </div>
+                </div>
+                <div class="grade-item">
+                    <div class="grade-percent">40%</div>
+                    <div class="grade-desc">
+                        <h3>Evaluations</h3>
+                        <p>Pencil and paper evaluations will be used to ensure command of material without access to AI or other resources. These will be held in-class and closed-book, with a single sheet of notes allowed. </p>
+                    </div>
+                </div>
+                <div class="grade-item">
+                    <div class="grade-percent">20%</div>
+                    <div class="grade-desc">
+                        <h3>Final Project</h3>
+                        <p>The course will culminate in a project relevant to your research interests, including a short written report and a presentation to the class. Final projects may be done either independently or in groups - consider building collaborations between experimentalists and computational folks. This is a great opportunity to lay the groundwork for a paper that you can finish over the summer!</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Policies -->
+        <section id="policies">
+            <h2>Course Policies</h2>
+            
+            <h3>Late Policy</h3>
+            <p>One late assignment will be accepted up to two days late. Further late assignments will not be accepted without an excuse from Prof. Trask.</p>
+            
+            <h3>Collaboration Policy</h3>
+            <p>You are encouraged to discuss the material with your classmates and to work in groups for any homework assignment, but the final product should be your own work. If you collaborate, in any way, you must acknowledge the collaboration. You should be able to provide a brief explanation of how your learning was improved by the collaboration. If you find this difficult to do, then it is probably the wrong kind of collaboration. This includes using AI tools or consulting stack overflow.</p>
+            
+            <h3>University Policies and Resources</h3>
+            <p>This course will be conducted in accordance with all university policies. The university and the School of Engineering & Applied Science also offer numerous resources to students that may be useful.</p>
+            
+            <h4>Code of Academic Integrity</h4>
+            <p>In accordance with the University's <a href="https://catalog.upenn.edu/pennbook/code-of-academic-integrity/" target="_blank">Code of Academic Integrity</a>, all work turned in by students should be an accurate reflection of their knowledge, and, with the exception of working in groups for homework assignments, should be conducted alone. Violation of University Code of Academic Integrity may result in failure of the course.</p>
+            
+            <h4>Students with Disabilities and Learning Differences</h4>
+            <p>Students with disabilities are encouraged to contact Weingarten Learning Resource Center's Office for Student Disabilities Services for information and assistance with the process of accessing reasonable accommodations. For more information, visit <a href="http://www.vpul.upenn.edu/lrc/sds/" target="_blank">their website</a>, or email lrcmail@pobox.upenn.edu.</p>
+            
+            <h4>Counseling and Psychological Services (CAPS)</h4>
+            <p>CAPS is the counseling center for the University of Pennsylvania. CAPS offers free and confidential services to all Penn undergraduate, graduate, and professional students. For more information, visit <a href="http://www.vpul.upenn.edu/caps/" target="_blank">their website</a>.</p>
+        </section>
+
+        <!-- Course Website Info -->
+        <section id="resources">
+            <h2>Course Resources</h2>
+            <p>We will use <a href="http://canvas.upenn.edu" target="_blank">Canvas</a> for assignments, and all material will be hosted on the course GitHub. We will use Ed Discussion for questions and announcements about the course. Ed is accessible through a link on the left panel of our Canvas page.</p>
+            
+            <p>If you have any questions about the class, please create a post on Ed! Use email only for sensitive topics. We will do our best to respond to your questions in a timely manner. If you see others' questions that you can answer or answers that you can improve, do it! Students who have contributed thoughtful comments, questions, and answers throughout the semester will earn extra credit in the class.</p>
+            
+            <p class="note"><strong>Important:</strong> While we encourage the use of AI at the graduate level to assist with learning and research, you must attribute AI-generated content and are soley responsible for your work. Pencil and paper exams will be used to ensure that you are actually learning course material. If your performance on exams does not reflect your submitted assignments and AI use is not attributed, it may be considered a violation of the academic integrity policy.  </p>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 ENM5320 - University of Pennsylvania</p>
+            <p>Instructor: Dr. Nat Trask</p>
+        </div>
+    </footer>
+</body>
+</html>
