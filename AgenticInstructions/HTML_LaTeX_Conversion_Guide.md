@@ -252,6 +252,141 @@ pre {
 </div>
 ```
 
+---
+
+## Content Organization (Based on Lecture_2.md Best Practices)
+
+### Overview Sections
+Every lecture should begin with a Section 0 overview that provides context:
+
+```html
+<h1>Lecture X: Descriptive Title</h1>
+
+<p><strong>Reference:</strong> <a href="Penn-library-URL">Author et al., Chapter X</a></p>
+<p><strong>Topics:</strong> Topic 1, Topic 2, Topic 3</p>
+
+<hr>
+
+<h2>0. Overview</h2>
+<p>[Paragraph 1: Explain the lecture's context within the course]</p>
+<p>[Paragraph 2: Explain the philosophy or approach being taken]</p>
+<p>[Paragraph 3: Connect to previous material or motivate the topics]</p>
+```
+
+**Important:** Overview text should be regular paragraphs, NOT in a special box.
+
+### Pedagogical Commentary
+When converting markdown that includes explanatory commentary about *why* concepts matter, keep it as regular text before introducing the mathematics:
+
+```html
+<h2>2. Mathematical Topic</h2>
+<p>This technique provides a simple means of analyzing stability that will be 
+sufficient for our purposes. Later in the course we will cover more sophisticated 
+approaches, but this gives us the tools we need right now.</p>
+
+<h3>2.1 Formal Definition</h3>
+<div class="definition">
+    <strong>Definition:</strong> [formal mathematical content]
+</div>
+```
+
+### Historical Context
+Integrate historical references naturally with proper links:
+
+```html
+<p>These numerical methods originated in the Manhattan Project at Los Alamos 
+(<a href="https://doi.org/10.1109/MAHC.2004.10025">Harlow, 2004</a>; 
+<a href="url">Goldstine, 1977</a>) where scientists needed practical solutions 
+for differential equations that couldn't be solved analytically.</p>
+```
+
+### Step-by-Step Derivations
+For multi-step worked examples, use `.example-box`:
+
+```html
+<div class="example-box">
+    <strong>Derivation of the Transport Solution</strong>
+    
+    <p><strong>Step 1:</strong> Start with the PDE</p>
+    $$\partial_t u + \partial_x u = 0$$
+    
+    <p><strong>Step 2:</strong> Apply Fourier transform</p>
+    $$\hat{u}_t + ik\hat{u} = 0$$
+    
+    <p><strong>Step 3:</strong> Solve the resulting ODE</p>
+    $$\hat{u}(k,t) = \hat{u}(k,0)e^{-ikt}$$
+</div>
+```
+
+Alternatively, for simpler derivations:
+
+```html
+<p><strong>Step 1:</strong> Define the problem:</p>
+$$\text{equation here}$$
+
+<p><strong>Step 2:</strong> Apply transformation:</p>
+$$\text{result here}$$
+```
+
+### Important Notes and Critical Observations
+Format as regular paragraphs with bold headers, not in boxes:
+
+```html
+<p><strong>Important Notes:</strong></p>
+<ul>
+    <li>Classification depends on the discriminant B² - AC</li>
+    <li>When coefficients vary, behavior can be mixed</li>
+    <li>Different methods required for each PDE type</li>
+</ul>
+
+<p><strong>Critical observation:</strong> The solution diverges when we fix 
+the ratio λ and refine the grid!</p>
+```
+
+### Summary Sections
+Place at the end using `.summary-box`:
+
+```html
+<hr>
+
+<h2>Summary</h2>
+<div class="summary-box">
+    <p>This lecture covered:</p>
+    <ol>
+        <li><strong>PDE Classification:</strong> Parabolic, hyperbolic, and elliptic types</li>
+        <li><strong>Fourier Analysis:</strong> Inner products and orthonormality</li>
+        <li><strong>Numerical Methods:</strong> Finite difference discretizations</li>
+    </ol>
+    
+    <p><strong>Key Takeaway:</strong> Numerical convergence requires careful balance 
+    between spatial and temporal discretization, not just refinement of both independently.</p>
+</div>
+```
+
+### Section Numbering
+- Use `## 0. Overview` for the opening section
+- Use `## 1. First Topic`, `## 2. Second Topic` for main sections
+- Use `### 1.1 Subtopic`, `### 1.2 Another Subtopic` for subsections
+
+```html
+<h2>0. Overview</h2>
+<!-- overview content -->
+
+<h2>1. First Major Topic</h2>
+<!-- intro paragraph -->
+
+<h3>1.1 Detailed Subtopic</h3>
+<!-- content -->
+
+<h3>1.2 Another Subtopic</h3>
+<!-- content -->
+
+<h2>2. Second Major Topic</h2>
+<!-- content -->
+```
+
+---
+
 ## File Naming and Organization
 
 ### Directory Structure
