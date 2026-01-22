@@ -387,6 +387,112 @@
 
     <p>This is particularly useful for absorbing terms in energy estimates.</p>
 
+    <h2>Taylor Series</h2>
+
+    <h3>Taylor's Theorem with Remainder</h3>
+
+    <p>For a function \(f: \mathbb{R} \to \mathbb{R}\) that is \((n+1)\)-times continuously differentiable on an interval containing \(a\) and \(x\), Taylor's theorem states:</p>
+    $$f(x) = \sum_{k=0}^{n} \frac{f^{(k)}(a)}{k!}(x-a)^k + R_n(x)$$
+
+    <p>where \(R_n(x)\) is the <strong>remainder term</strong> (or <strong>truncation error</strong>).</p>
+
+    <h3>Forms of the Remainder</h3>
+
+    <div class="definition">
+        <p><strong>Lagrange form (most common for error analysis):</strong></p>
+        $$R_n(x) = \frac{f^{(n+1)}(\xi)}{(n+1)!}(x-a)^{n+1}$$
+
+        <p>for some \(\xi\) between \(a\) and \(x\). This follows from the mean value theorem applied repeatedly.</p>
+    </div>
+
+    <p><strong>Integral form:</strong></p>
+    $$R_n(x) = \frac{1}{n!}\int_a^x (x-t)^n f^{(n+1)}(t) \, dt$$
+
+    <p><strong>Big-O notation:</strong></p>
+    $$R_n(x) = O(|x-a|^{n+1}) \quad \text{as } x \to a$$
+
+    <h3>Common Taylor Expansions</h3>
+
+    <p>Expanding around \(a = 0\) (Maclaurin series):</p>
+
+    <p><strong>Exponential:</strong></p>
+    $$e^x = 1 + x + \frac{x^2}{2!} + \frac{x^3}{3!} + \cdots + \frac{x^n}{n!} + \frac{e^\xi}{(n+1)!}x^{n+1}$$
+
+    <p><strong>Sine:</strong></p>
+    $$\sin(x) = x - \frac{x^3}{3!} + \frac{x^5}{5!} - \cdots + R_n(x)$$
+
+    <p><strong>Cosine:</strong></p>
+    $$\cos(x) = 1 - \frac{x^2}{2!} + \frac{x^4}{4!} - \cdots + R_n(x)$$
+
+    <p><strong>Natural logarithm:</strong></p>
+    $$\ln(1+x) = x - \frac{x^2}{2} + \frac{x^3}{3} - \cdots + R_n(x), \quad |x| < 1$$
+
+    <h3>Application to Finite Differences</h3>
+
+    <div class="example-box">
+        <strong>First-order forward difference:</strong>
+
+        <p>For a smooth function \(u(x)\) with \(|u''(x)| \leq M\), expand around \(x\):</p>
+        $$u(x+h) = u(x) + h u'(x) + \frac{h^2}{2} u''(\xi)$$
+
+        <p>for some \(\xi \in (x, x+h)\). Rearranging:</p>
+        $$u'(x) = \frac{u(x+h) - u(x)}{h} - \frac{h}{2} u''(\xi)$$
+
+        <p>The <strong>truncation error</strong> is:</p>
+        $$\left|u'(x) - \frac{u(x+h) - u(x)}{h}\right| = \frac{h}{2}|u''(\xi)| \leq \frac{Mh}{2}$$
+
+        <p>Thus the forward difference is <strong>first-order accurate</strong>: error \(= O(h)\).</p>
+    </div>
+
+    <div class="example-box">
+        <strong>Second-order centered difference:</strong>
+
+        <p>For the second derivative, expand both forward and backward:</p>
+        $$u(x+h) = u(x) + h u'(x) + \frac{h^2}{2} u''(x) + \frac{h^3}{6} u'''(x) + \frac{h^4}{24} u^{(4)}(\xi_+)$$
+
+        $$u(x-h) = u(x) - h u'(x) + \frac{h^2}{2} u''(x) - \frac{h^3}{6} u'''(x) + \frac{h^4}{24} u^{(4)}(\xi_-)$$
+
+        <p>Adding these equations:</p>
+        $$u(x+h) + u(x-h) = 2u(x) + h^2 u''(x) + \frac{h^4}{24}\left[u^{(4)}(\xi_+) + u^{(4)}(\xi_-)\right]$$
+
+        <p>Solving for \(u''(x)\):</p>
+        $$u''(x) = \frac{u(x-h) - 2u(x) + u(x+h)}{h^2} - \frac{h^2}{24}\left[u^{(4)}(\xi_+) + u^{(4)}(\xi_-)\right]$$
+
+        <p>The <strong>truncation error</strong> is:</p>
+        $$\left|u''(x) - \frac{u(x-h) - 2u(x) + u(x+h)}{h^2}\right| \leq \frac{h^2}{12}\max|u^{(4)}|$$
+
+        <p>Thus the centered difference for the second derivative is <strong>second-order accurate</strong>: error \(= O(h^2)\).</p>
+    </div>
+
+    <div class="example-box">
+        <strong>Example: Approximating \(\sin(x)\) on an Interval</strong>
+
+        <p><strong>Problem:</strong> Approximate \(f(x) = \sin(x)\) using a linear function on the interval \([x_0, x_0 + h]\).</p>
+
+        <p><strong>Solution:</strong> Use the first-order Taylor expansion:</p>
+        $$\sin(x_0 + h) = \sin(x_0) + h\cos(x_0) + \frac{h^2}{2}(-\sin(\xi))$$
+
+        <p>for some \(\xi \in (x_0, x_0 + h)\).</p>
+
+        <p>The linear approximation is:</p>
+        $$p(x) = \sin(x_0) + (x - x_0)\cos(x_0)$$
+
+        <p>The maximum error on the interval is:</p>
+        $$\max_{x \in [x_0, x_0+h]} |f(x) - p(x)| \leq \frac{h^2}{2}\max_{\xi \in [x_0, x_0+h]} |\sin(\xi)| \leq \frac{h^2}{2}$$
+
+        <p><strong>Numerical example:</strong> For \(x_0 = 0\) and \(h = 0.1\):</p>
+        <ul>
+            <li>True value: \(\sin(0.1) \approx 0.0998334\)</li>
+            <li>Linear approximation: \(p(0.1) = 0 + 0.1 \cdot 1 = 0.1\)</li>
+            <li>Error: \(|0.0998334 - 0.1| = 0.0001666\)</li>
+            <li>Bound: \(\frac{(0.1)^2}{2} = 0.005\)</li>
+        </ul>
+
+        <p>The actual error is much smaller than the bound because \(\sin(\xi) \ll 1\) for small \(\xi\).</p>
+
+        <p><strong>Key insight:</strong> The truncation error scales as \(h^{n+1}\) where \(n\) is the degree of the approximating polynomial. This is fundamental to understanding convergence rates in numerical methods.</p>
+    </div>
+
     <h2>Useful Manipulation Techniques</h2>
 
     <h3>Completing the Square</h3>

@@ -218,6 +218,103 @@ $$ab \leq \frac{\epsilon a^2}{2} + \frac{b^2}{2\epsilon}$$
 
 This is particularly useful for absorbing terms in energy estimates.
 
+## Taylor Series
+
+### Taylor's Theorem with Remainder
+
+For a function $f: \mathbb{R} \to \mathbb{R}$ that is $(n+1)$-times continuously differentiable on an interval containing $a$ and $x$, Taylor's theorem states:
+
+$$f(x) = \sum_{k=0}^{n} \frac{f^{(k)}(a)}{k!}(x-a)^k + R_n(x)$$
+
+where $R_n(x)$ is the **remainder term** (or **truncation error**).
+
+### Forms of the Remainder
+
+**Lagrange form (most common for error analysis):**
+$$R_n(x) = \frac{f^{(n+1)}(\xi)}{(n+1)!}(x-a)^{n+1}$$
+
+for some $\xi$ between $a$ and $x$. This follows from the mean value theorem applied repeatedly.
+
+**Integral form:**
+$$R_n(x) = \frac{1}{n!}\int_a^x (x-t)^n f^{(n+1)}(t) \, dt$$
+
+**Big-O notation:**
+$$R_n(x) = O(|x-a|^{n+1}) \quad \text{as } x \to a$$
+
+### Common Taylor Expansions
+
+Expanding around $a = 0$ (Maclaurin series):
+
+**Exponential:**
+$$e^x = 1 + x + \frac{x^2}{2!} + \frac{x^3}{3!} + \cdots + \frac{x^n}{n!} + \frac{e^\xi}{(n+1)!}x^{n+1}$$
+
+**Sine:**
+$$\sin(x) = x - \frac{x^3}{3!} + \frac{x^5}{5!} - \cdots + R_n(x)$$
+
+**Cosine:**
+$$\cos(x) = 1 - \frac{x^2}{2!} + \frac{x^4}{4!} - \cdots + R_n(x)$$
+
+**Natural logarithm:**
+$$\ln(1+x) = x - \frac{x^2}{2} + \frac{x^3}{3} - \cdots + R_n(x), \quad |x| < 1$$
+
+### Application to Finite Differences
+
+**First-order forward difference:**
+
+For a smooth function $u(x)$ with $|u''(x)| \leq M$, expand around $x$:
+$$u(x+h) = u(x) + h u'(x) + \frac{h^2}{2} u''(\xi)$$
+
+for some $\xi \in (x, x+h)$. Rearranging:
+$$u'(x) = \frac{u(x+h) - u(x)}{h} - \frac{h}{2} u''(\xi)$$
+
+The **truncation error** is:
+$$\left|u'(x) - \frac{u(x+h) - u(x)}{h}\right| = \frac{h}{2}|u''(\xi)| \leq \frac{Mh}{2}$$
+
+Thus the forward difference is **first-order accurate**: error $= O(h)$.
+
+**Second-order centered difference:**
+
+For the second derivative, expand both forward and backward:
+$$u(x+h) = u(x) + h u'(x) + \frac{h^2}{2} u''(x) + \frac{h^3}{6} u'''(x) + \frac{h^4}{24} u^{(4)}(\xi_+)$$
+
+$$u(x-h) = u(x) - h u'(x) + \frac{h^2}{2} u''(x) - \frac{h^3}{6} u'''(x) + \frac{h^4}{24} u^{(4)}(\xi_-)$$
+
+Adding these equations:
+$$u(x+h) + u(x-h) = 2u(x) + h^2 u''(x) + \frac{h^4}{24}\left[u^{(4)}(\xi_+) + u^{(4)}(\xi_-)\right]$$
+
+Solving for $u''(x)$:
+$$u''(x) = \frac{u(x-h) - 2u(x) + u(x+h)}{h^2} - \frac{h^2}{24}\left[u^{(4)}(\xi_+) + u^{(4)}(\xi_-)\right]$$
+
+The **truncation error** is:
+$$\left|u''(x) - \frac{u(x-h) - 2u(x) + u(x+h)}{h^2}\right| \leq \frac{h^2}{12}\max|u^{(4)}|$$
+
+Thus the centered difference for the second derivative is **second-order accurate**: error $= O(h^2)$.
+
+### Example: Approximating $\sin(x)$ on an Interval
+
+**Problem:** Approximate $f(x) = \sin(x)$ using a linear function on the interval $[x_0, x_0 + h]$.
+
+**Solution:** Use the first-order Taylor expansion:
+$$\sin(x_0 + h) = \sin(x_0) + h\cos(x_0) + \frac{h^2}{2}(-\sin(\xi))$$
+
+for some $\xi \in (x_0, x_0 + h)$.
+
+The linear approximation is:
+$$p(x) = \sin(x_0) + (x - x_0)\cos(x_0)$$
+
+The maximum error on the interval is:
+$$\max_{x \in [x_0, x_0+h]} |f(x) - p(x)| \leq \frac{h^2}{2}\max_{\xi \in [x_0, x_0+h]} |\sin(\xi)| \leq \frac{h^2}{2}$$
+
+**Numerical example:** For $x_0 = 0$ and $h = 0.1$:
+- True value: $\sin(0.1) \approx 0.0998334$
+- Linear approximation: $p(0.1) = 0 + 0.1 \cdot 1 = 0.1$
+- Error: $|0.0998334 - 0.1| = 0.0001666$
+- Bound: $\frac{(0.1)^2}{2} = 0.005$
+
+The actual error is much smaller than the bound because $\sin(\xi) \ll 1$ for small $\xi$.
+
+**Key insight:** The truncation error scales as $h^{n+1}$ where $n$ is the degree of the approximating polynomial. This is fundamental to understanding convergence rates in numerical methods.
+
 ## Useful Manipulation Techniques
 
 ### Completing the Square
