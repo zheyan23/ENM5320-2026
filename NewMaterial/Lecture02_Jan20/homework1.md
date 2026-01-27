@@ -15,9 +15,9 @@ where $u^n_i$ approximates $u(x_i, t_n)$, $k = \Delta t$ is the time step, and $
 
 Prove that this finite difference scheme gives a *consistent* approximation to the PDE by showing that the local truncation error goes to zero:
 
-$$\lim_{k,h \rightarrow 0} \left| \frac{u(x_i,t_{n+1}) - u(x_i,t_n)}{k} - \frac{\alpha }{h^2} (u(x_{i-1},t_{n+1}) - 2u(x_i,t_{n+1}) + u(x_{i+1},t_{n+1})) - \partial_t u(x_i,t_n) + \partial_{xx} u(x_i,t_n) \right|^2 = 0$$
+$$\lim_{k,h \rightarrow 0} \left| \frac{u(x_i,t_{n+1}) - u(x_i,t_n)}{k} - \frac{\alpha }{h^2} (u(x_{i-1},t_{n+1}) - 2u(x_i,t_{n+1}) + u(x_{i+1},t_{n+1})) - \partial_t u(x_i,t_n) + \alpha \partial_{xx} u(x_i,t_n) \right|^2 = 0$$
 
-*Hint:* Use the triangle inequality to split the error between the time piece and the spatial piece. Expand in a Taylor series for each piece to get a residual that scales with either $t$ or $h$, respectively.
+*Hint:* Use the triangle inequality to split the error between the time piece and the spatial piece. Expand in a Taylor series for each piece to get a residual that scales with either $k$ or $h$, respectively.
 
 # Question 2 - Convergence study
 
