@@ -304,7 +304,24 @@
 
         <p><strong>Spectral Radius:</strong> \(\rho(A)=\max |\lambda_{i}|, \quad \rho(A) \leq\|A\|\)</p>
 
-        <h3>2.5 Parseval's Theorem</h3>
+        <h3>2.5 Orthogonality of Fourier Modes</h3>
+
+        <div class="theorem-box">
+            <strong>Lemma (Orthogonality):</strong>
+            The normalized complex exponentials form an orthonormal set:
+
+            $$\left(\frac{1}{\sqrt{2\pi}} e^{inx}, \frac{1}{\sqrt{2\pi}} e^{imx}\right) = \frac{1}{2\pi}\int_{0}^{2\pi} e^{inx} e^{-imx} dx = \begin{cases}1 & n=m \\ 0 & n \neq m\end{cases} = \delta_{nm}$$
+
+            <p><em>Proof:</em></p>
+            $$\frac{1}{2\pi}\int_{0}^{2\pi} e^{i(n-m)x} dx = \begin{cases}
+            \frac{1}{2\pi}\int_{0}^{2\pi} 1 \, dx = 1 & \text{if } n=m \\
+            \frac{1}{2\pi} \left[\frac{e^{i(n-m)x}}{i(n-m)}\right]_0^{2\pi} = 0 & \text{if } n \neq m
+            \end{cases}$$
+
+            <p>The second case is zero because \(e^{i(n-m)2\pi} = 1\) for integer \(n-m\), so the exponential returns to its starting value.</p>
+        </div>
+
+        <h3>2.6 Parseval's Theorem</h3>
 
         <p>Parseval's theorem allows us to jump back and forth between descriptions of a function in physical space or Fourier space. Remember that a function \(f \in L^2(\Omega)\) if \(\int_\Omega f^2 dx < \infty\).</p>
 
