@@ -225,25 +225,16 @@ a:hover {
 }
 
 .resources li {
-    background: var(--light-bg);
-    padding: 0.4rem 0.8rem;
+    background: none;
+    padding: 0;
     border-radius: 4px;
     font-size: 0.9rem;
-    border: 1px solid var(--border-color);
+    border: none;
 }
 
 .resources a {
-    color: var(--primary-color);
-    font-weight: 500;
-}
-
-.resources a:hover {
-    color: var(--secondary-color);
-}
-
-.resources a.btn {
     display: inline-block;
-    background: var(--secondary-color);
+    background: #6c757d;
     color: #fff;
     padding: 0.3rem 0.8rem;
     border-radius: 4px;
@@ -251,8 +242,8 @@ a:hover {
     font-weight: 600;
 }
 
-.resources a.btn:hover {
-    background: var(--primary-color);
+.resources a:hover {
+    background: var(--secondary-color);
     color: #fff;
 }
 
